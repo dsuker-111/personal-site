@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.npm-cache/
+shots_*.png
+__pycache__/
+*.pyc
+output/
