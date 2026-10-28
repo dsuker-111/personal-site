@@ -1,10 +1,21 @@
 # 个人网页 · AI 助手（Personal Site）
 
+# 个人网页 · AI 助手（Personal Site）
+
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页第一版：
 
 - **登录界面**：进入首页前需要登录，登录成功后跳转到主页面。
 - **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
 - **AI 对话框**：内置 AI 对话面板，可与本机 **TRAE 训练**的本地模型 **Qwen2.5-0.5B-Instruct + LoRA(lora_qa)** 对话。
+
+## 上线状态
+
+- **线上地址**：https://dsuker-111.github.io/personal-site/（GitHub Pages）
+- **GitHub 仓库**：https://github.com/dsuker-111/personal-site
+- **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
+- **登录账号**：`admin / 123456`
+
+> ⚠️ AI 对话面板调用的本地模型服务（http://127.0.0.1:8000）运行在你自己电脑上，因此**只有在你本机运行 `server/web_api.py` 时**，线上页面才能收到模型答复；未运行时页面会提示「未检测到本地模型服务」。
 
 ---
 
