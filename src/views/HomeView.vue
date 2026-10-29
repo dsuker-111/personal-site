@@ -40,13 +40,13 @@ function logout() {
     <main class="content">
       <section class="hero">
         <h2>欢迎回来，{{ user && user.nickname }}！</h2>
-        <p>这是基于 Vue 3 的个人网页。登录后可在下方 AI 助手中对话，模型由 <strong>阿里云百炼</strong> 提供。</p>
-        <div class="model-tag">模型：deepseek-v4.1-flash · 阿里云百炼</div>
+        <p>这是基于 Vue 3 的个人网页。登录后可在下方 AI 助手中对话，支持切换多个云端模型，也能接入本机训练的 LoRA 模型。</p>
+        <div class="model-tag">模型：deepseek-v4.1-flash / qwen-plus / qwen-max / qwen-long · 阿里云百炼</div>
       </section>
 
       <section class="panel">
         <h3>AI 助手</h3>
-        <p class="panel-desc">下方对话框已接入阿里云百炼 <code>deepseek-v4.1-flash</code>，打开网页即可对话，无需本机启动任何服务。</p>
+        <p class="panel-desc">对话框上方可切换模型：云端模型经阿里云百炼提供服务，打开网页即可用；本地模型需要在你自己的电脑上运行 <code>server/web_api.py</code>。</p>
 
         <div class="quick">
           <span class="quick-label">试试：</span>

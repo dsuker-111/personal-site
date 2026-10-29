@@ -93,6 +93,15 @@ app.add_middleware(
 )
 
 
+# 公网 HTTPS 页面访问 http://127.0.0.1 属于「私有网络访问(PNA)」，
+# Chrome/Edge 要求预检响应带下面这个头，否则请求会被直接拦掉。
+@app.middleware("http")
+async def allow_private_network(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "model": MODEL_BASE, "lora": os.path.isdir(LORA_DIR)}

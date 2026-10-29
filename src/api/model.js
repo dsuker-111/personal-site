@@ -5,6 +5,7 @@
 
 import { getDirectConfig, directChat } from './direct'
 import { request, HAS_BACKEND, API_BASE } from './http'
+import { LOCAL_ID, localBase } from './models'
 
 const IS_PROD = import.meta.env.PROD === true
 
@@ -71,12 +72,21 @@ export async function checkHealth(timeout = 8000) {
   }
 }
 
-// 发送对话。options: { maxNewTokens, temperature, history, timeout }
+// 发送对话。options: { model, maxNewTokens, temperature, history, timeout }
+// model 为 local:qwen-lora 时调用本机服务，其余走云端后端。
 export async function chat(prompt, options = {}) {
+  if (options.model === LOCAL_ID) {
+    return chatLocal(prompt, options)
+  }
+
   if (HAS_BACKEND) {
     const d = await request('/api/chat', {
       method: 'POST',
-      body: { prompt, history: options.history || [] },
+      body: {
+        prompt,
+        history: options.history || [],
+        model: options.model || undefined
+      },
       timeout: options.timeout || 120000
     })
     return { answer: d.answer || '', model: d.model || MODEL.fallbackName, raw: d }
@@ -115,5 +125,44 @@ export async function chat(prompt, options = {}) {
   } catch (err) {
     clearTimeout(timer)
     throw err
+  }
+}
+
+// 调用 TRAE 训练好的本地模型（server/web_api.py）
+async function chatLocal(prompt, options = {}) {
+  const base = localBase()
+  if (!base) throw new Error('未配置本地模型地址（config.js 的 __LOCAL_MODEL__）')
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), options.timeout || 120000)
+  try {
+    const res = await fetch(base + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        history: options.history || [],
+        max_new_tokens: options.maxNewTokens ?? 320,
+        temperature: options.temperature ?? 0.7
+      }),
+      signal: controller.signal
+    })
+    if (!res.ok) throw new Error('本地模型返回 HTTP ' + res.status)
+    const data = await res.json()
+    if (data && data.error) throw new Error(data.error)
+    return {
+      answer: (data && data.answer) || '',
+      model: 'qwen2.5-0.5b + lora_qa',
+      local: true,
+      raw: data
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') throw new Error('本地模型响应超时')
+    if (err instanceof TypeError) {
+      throw new Error('无法连接本地模型服务，请先运行 python server/web_api.py')
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
   }
 }

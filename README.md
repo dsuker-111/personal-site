@@ -1,13 +1,41 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.3.0`**（后端版：资源库 + 服务端鉴权）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.4.0`**（多模型切换 + 本地 LoRA 接入）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
 - **登录界面**：进入首页前需要登录，**密码由后端校验**，校验通过后签发 token。
 - **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
-- **AI 对话框**：内置 AI 对话面板，接入 **阿里云百炼 `deepseek-v4.1-flash`**（API Key 只存在服务端）。
+- **AI 对话框**：可选 **4 个云端模型**（阿里云百炼）与 **TRAE 训练的本地 LoRA 模型**。
 - **资源库**：上传/浏览/下载图片、视频和文件，换台电脑打开网址即可访问。
+
+## 支持的模型
+
+在对话框顶部的「模型」下拉框里切换，选择会被记住。
+
+| 模型 | 来源 | 可用范围 | 说明 |
+| --- | --- | --- | --- |
+| `deepseek-v4.1-flash` | 阿里云百炼 | 任何设备 | 默认，响应约 1 秒 |
+| `qwen-plus` | 阿里云百炼 | 任何设备 | 通义千问均衡版 |
+| `qwen-max` | 阿里云百炼 | 任何设备 | 通义千问最强版 |
+| `qwen-long` | 阿里云百炼 | 任何设备 | 超长上下文 |
+| `Qwen2.5-0.5B + LoRA` | TRAE 本地训练 | **仅本机** | 需先启动 `server/web_api.py` |
+
+云端模型一律经后端调用，API Key 不出服务端。本地模型由浏览器直连 `http://127.0.0.1:8000`，
+只有在运行了本地服务的那台电脑上才可用；其他设备选中后会提示「本地模型服务未启动」。
+
+### 启动本地 LoRA 模型
+
+```bash
+pip install torch transformers peft fastapi uvicorn accelerate
+set LORA_DIR=./output/lora_qa          # TRAE 导出的 LoRA 权重目录
+python server/web_api.py               # 监听 http://127.0.0.1:8000
+```
+
+本地服务地址可在 `public/config.js` 的 `window.__LOCAL_MODEL__` 修改。
+
+> 首次从公网页面访问本机地址时，浏览器可能弹出「访问本地网络」授权，需要点【允许】。
+> 服务端已返回 `Access-Control-Allow-Private-Network: true`，否则会被 PNA 策略拦截。
 
 ## 系统架构
 
@@ -31,7 +59,7 @@
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.3.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（后端代理） | 🟢 维护中 |
+| **v2.x** | `main` | `v2.4.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 云端多模型 + 本地 LoRA | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash

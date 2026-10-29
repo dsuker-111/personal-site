@@ -9,6 +9,10 @@
 
 window.__API_BASE__ = 'https://personasite-api-ovjtmwtnlx.cn-hangzhou.fcapp.run'
 
+// 本地模型服务（TRAE 训练的 Qwen2.5-0.5B-Instruct + lora_qa）
+// 只有运行了 server/web_api.py 的电脑才能连上，其他设备选择该模型会提示未启动。
+window.__LOCAL_MODEL__ = 'http://127.0.0.1:8000'
+
 // 浏览器直连模式（默认关闭）
 window.__AI_DIRECT__ = null
 // 旧版本遗留的代理前缀，保持为空

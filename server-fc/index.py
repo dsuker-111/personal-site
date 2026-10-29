@@ -49,6 +49,19 @@ DASHSCOPE_BASE_URL = os.environ.get(
     "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
 ).rstrip("/")
 
+# 可在页面上切换的云端模型（均经阿里云百炼，Key 只在服务端）
+CLOUD_MODELS = [
+    {"id": "deepseek-v4.1-flash", "label": "DeepSeek V4.1 Flash",
+     "provider": "阿里云百炼", "desc": "响应快，日常问答默认"},
+    {"id": "qwen-plus", "label": "Qwen Plus",
+     "provider": "阿里云百炼", "desc": "通义千问均衡版，中文稳健"},
+    {"id": "qwen-max", "label": "Qwen Max",
+     "provider": "阿里云百炼", "desc": "通义千问最强版，适合复杂问题"},
+    {"id": "qwen-long", "label": "Qwen Long",
+     "provider": "阿里云百炼", "desc": "超长上下文，适合长文阅读"},
+]
+CLOUD_MODEL_IDS = [m["id"] for m in CLOUD_MODELS]
+
 MEDIA_DIR = "media"
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20MB
 TOKEN_TTL = 7 * 24 * 3600
@@ -230,9 +243,12 @@ def read_file(obj):
 
 # ---------------------------------------------------------------- AI
 
-def chat(prompt, history):
+def chat(prompt, history, model=None):
     if not DASHSCOPE_API_KEY:
         raise RuntimeError("服务端未配置 DASHSCOPE_API_KEY")
+    model = (model or MODEL_NAME).strip()
+    if model not in CLOUD_MODEL_IDS:
+        raise ValueError("不支持的模型：%s" % model)
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for item in history or []:
         content = (item.get("content") or "").strip()
@@ -247,7 +263,7 @@ def chat(prompt, history):
     messages.append({"role": "user", "content": prompt})
 
     payload = json.dumps({
-        "model": MODEL_NAME,
+        "model": model,
         "messages": messages,
         "max_tokens": 512,
         "temperature": 0.7,
@@ -364,11 +380,19 @@ def handler(event, context):
                          "m4v": "video/x-m4v", "ogg": "video/ogg"}.get(ext.lstrip("."), "video/*")
             return _binary(200, raw, ctype, filename)
 
+        if path in ("/api/models", "/api/model-list"):
+            return _resp(200, {
+                "ok": True,
+                "default": MODEL_NAME,
+                "models": [{**m, "kind": "cloud"} for m in CLOUD_MODELS],
+            })
+
         if path == "/api/chat" and method == "POST":
             prompt = (data.get("prompt") or "").strip()
             if not prompt:
                 return _resp(400, {"ok": False, "error": "内容为空"})
-            return _resp(200, dict({"ok": True}, **chat(prompt, data.get("history"))))
+            model = data.get("model") or MODEL_NAME
+            return _resp(200, dict({"ok": True}, **chat(prompt, data.get("history"), model)))
 
         return _resp(404, {"ok": False, "error": "接口不存在: %s %s" % (method, path)})
     except ValueError as e:

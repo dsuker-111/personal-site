@@ -1,12 +1,17 @@
 <script setup>
 import { ref, nextTick, onMounted, computed } from 'vue'
 import { chat, checkHealth, MODEL } from '../api/model'
+import { listCloudModels, probeLocal, LOCAL_ID, LOCAL_META } from '../api/models'
 
-const modelName = ref(MODEL.fallbackName)
-const provider = ref('阿里云百炼')
+const MODEL_KEY = 'ps_chat_model'
+
+const cloudModels = ref([])
+const currentModel = ref('')
+const localOnline = ref(false)
+const localReason = ref('')
 
 const messages = ref([
-  { role: 'ai', text: '你好！我是这个个人网页里的 AI 助手，当前由阿里云百炼的 deepseek-v4.1-flash 提供服务。有什么可以帮你？' }
+  { role: 'ai', text: '你好！我是这个网页里的 AI 助手。可以在上方「模型」里切换云端模型，或在运行了本地服务的电脑上选择自训练的 LoRA 模型。' }
 ])
 const input = ref('')
 const busy = ref(false)
@@ -14,35 +19,62 @@ const status = ref({ state: 'checking', text: '正在检测 AI 服务…' })
 const listEl = ref(null)
 const inputEl = ref(null)
 
-const modelLabel = computed(() => modelName.value || MODEL.fallbackName)
+const isLocal = computed(() => currentModel.value === LOCAL_ID)
 
-// 判断是否为「公网 HTTPS 页面访问本机」场景——此时浏览器会拦截，需要用户授权本地网络访问
+const currentMeta = computed(() => {
+  const m = cloudModels.value.find((x) => x.id === currentModel.value)
+  if (m) return m
+  if (isLocal.value) return LOCAL_META
+  return null
+})
+
+const modelLabel = computed(() => {
+  if (isLocal.value) return LOCAL_META.label
+  return (currentMeta.value && currentMeta.value.label) || MODEL.fallbackName
+})
+
 const needsLocalNetworkGrant = computed(() => {
   if (typeof window === 'undefined') return false
   const h = window.location.hostname
-  const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '[::1]'
-  return window.location.protocol === 'https:' && !isLocal
+  const isLocalHost = h === 'localhost' || h === '127.0.0.1' || h === '[::1]'
+  return window.location.protocol === 'https:' && !isLocalHost
+})
+
+const localHint = computed(() => {
+  const base = '本地模型服务未启动。请在电脑上运行：python server/web_api.py'
+  if (needsLocalNetworkGrant.value) {
+    return base + '；若已在运行，请在浏览器提示「访问本地网络」时点【允许】。'
+  }
+  return base + (localReason.value ? '（' + localReason.value + '）' : '')
 })
 
 const offlineHint = computed(() => {
   if (needsLocalNetworkGrant.value) {
-    return '无法访问本机 AI 代理。若代理已在运行，请在浏览器提示「访问本地网络」时点【允许】；'
-      + '或在地址栏左侧站点设置中开启本地网络访问权限。也可改用本地方式访问本站。'
+    return '无法访问本机 AI 代理。若代理已在运行，请在浏览器提示「访问本地网络」时点【允许】。'
   }
-  return '未检测到 AI 代理服务 (' + MODEL.url + ')。请运行 server/cloud_api.py 并配置 DASHSCOPE_API_KEY。'
+  return '未检测到后端服务 (' + MODEL.url + ')。'
 })
 
-// 健康检查
+async function refreshLocal() {
+  const p = await probeLocal()
+  localOnline.value = p.online
+  localReason.value = p.online ? '' : p.reason || ''
+  return p.online
+}
+
 async function ping() {
+  if (isLocal.value) {
+    const ok = await refreshLocal()
+    status.value = ok
+      ? { state: 'online', text: '已连接 · ' + modelLabel.value + '（本机）' }
+      : { state: 'offline', text: localHint.value }
+    return ok
+  }
+
   const res = await checkHealth()
   if (res.online) {
-    modelName.value = res.model
-    if (res.provider === 'aliyun-dashscope') provider.value = '阿里云百炼'
     if (res.keyConfigured === false) {
-      status.value = {
-        state: 'offline',
-        text: '代理已启动，但未配置 DASHSCOPE_API_KEY（请在启动 cloud_api.py 前设置环境变量）'
-      }
+      status.value = { state: 'offline', text: '后端已启动，但未配置 DASHSCOPE_API_KEY' }
     } else {
       status.value = { state: 'online', text: '已连接 · ' + modelLabel.value }
     }
@@ -62,6 +94,15 @@ async function scroll() {
   if (listEl.value) listEl.value.scrollTop = listEl.value.scrollHeight
 }
 
+async function onModelChange() {
+  try {
+    localStorage.setItem(MODEL_KEY, currentModel.value)
+  } catch {
+    /* ignore */
+  }
+  await ping()
+}
+
 async function send(pre = '') {
   const text = (pre && pre.trim()) || input.value.trim()
   if (!text || busy.value) return
@@ -75,30 +116,68 @@ async function send(pre = '') {
     .map((m) => ({ role: m.role, content: m.text }))
 
   try {
-    const res = await chat(text, { history, maxNewTokens: 512, temperature: 0.7 })
-    if (res.model) modelName.value = res.model
-    addMessage('ai', (res.answer && res.answer.trim()) ? res.answer : '（模型没有返回内容）')
-    status.value = { state: 'online', text: '已连接 · ' + modelLabel.value }
+    const res = await chat(text, {
+      model: currentModel.value,
+      history,
+      maxNewTokens: 512,
+      temperature: 0.7
+    })
+    addMessage('ai', res.answer && res.answer.trim() ? res.answer : '（模型没有返回内容）')
+    status.value = {
+      state: 'online',
+      text: '已连接 · ' + modelLabel.value + (res.local ? '（本机）' : '')
+    }
   } catch (err) {
     const msg = err && err.message ? err.message : String(err)
     const online = await ping()
-    addMessage('ai', online
-      ? '请求失败：' + msg
-      : '无法连接 AI 服务。' + offlineHint.value)
+    addMessage('ai', online ? '请求失败：' + msg : isLocal.value ? localHint.value : '无法连接 AI 服务。' + offlineHint.value)
   } finally {
     busy.value = false
     if (inputEl.value) inputEl.value.focus()
   }
 }
 
-onMounted(ping)
+onMounted(async () => {
+  cloudModels.value = await listCloudModels()
 
-// 暴露给父组件（主页快捷提问按钮调用）
+  let stored = ''
+  try {
+    stored = localStorage.getItem(MODEL_KEY) || ''
+  } catch {
+    /* ignore */
+  }
+  const valid = stored === LOCAL_ID || cloudModels.value.some((m) => m.id === stored)
+  if (valid) currentModel.value = stored
+  else if (cloudModels.value.length) currentModel.value = cloudModels.value[0].id
+  else currentModel.value = LOCAL_ID
+
+  await refreshLocal()
+  await ping()
+})
+
 defineExpose({ send })
 </script>
 
 <template>
   <div class="ai-chat" :class="{ 'is-busy': busy }">
+    <div class="chat-models">
+      <label class="model-caption" for="model-select">模型</label>
+      <select id="model-select" v-model="currentModel" class="model-select" @change="onModelChange">
+        <optgroup v-if="cloudModels.length" label="云端 · 任何设备可用">
+          <option v-for="m in cloudModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+        </optgroup>
+        <optgroup label="本地 · 仅本机可用">
+          <option :value="LOCAL_ID">
+            {{ LOCAL_META.label }}{{ localOnline ? '' : '（未启动）' }}
+          </option>
+        </optgroup>
+      </select>
+      <span class="model-provider">{{ currentMeta ? currentMeta.provider : '阿里云百炼' }}</span>
+      <span v-if="isLocal" class="model-badge" :class="localOnline ? 'on' : 'off'">
+        {{ localOnline ? '本机在线' : '本机离线' }}
+      </span>
+    </div>
+
     <div class="chat-status" :data-state="status.state">{{ status.text }}</div>
 
     <div class="chat-list" ref="listEl">

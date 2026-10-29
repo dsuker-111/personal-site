@@ -7,9 +7,30 @@
 | 大版本 | 分支 | Git tag | 线上目录 | 说明 |
 | --- | --- | --- | --- | --- |
 | v1.x | `release/v1` | `v1.0.0` | `/v1/` | 本地 Qwen + LoRA 模型版，代码冻结，仅修 bug |
-| v2.x | `main` | `v2.0.0` `v2.1.0` `v2.2.0` `v2.3.0` | `/`（根） | 阿里云百炼 `deepseek-v4.1-flash`，持续迭代 |
+| v2.x | `main` | `v2.0.0` `v2.1.0` `v2.2.0` `v2.3.0` `v2.4.0` | `/`（根） | 阿里云百炼 `deepseek-v4.1-flash`，持续迭代 |
 
 ---
+
+## v2.4.0 — 多模型切换 + 本地 LoRA 接入（2026-10-29）
+
+**对话面板可选择模型：4 个云端模型 + TRAE 训练的本地模型。**
+
+- 新增 `src/api/models.js`：拉取云端模型清单、探测本机模型服务是否在线
+- `AiChat.vue` 顶部新增模型下拉框，选项分组「云端 · 任何设备可用 / 本地 · 仅本机可用」，
+  选择结果存入 `localStorage`，切换后立即重新检测连接状态
+- 后端新增 `GET /api/models`；`POST /api/chat` 接受 `model` 参数并校验白名单，
+  非法模型名直接拒绝（实测传 `gpt-4` 返回「不支持的模型」）
+- 实测可用的云端模型：`deepseek-v4.1-flash`、`qwen-plus`、`qwen-max`、`qwen-long`
+  （`qwen-turbo` 触发限流、`qwen2.5-*` 无权限、`deepseek-v3/r1` 与 `qwen3-*` 未上线，均未启用）
+- 本地模型走 `server/web_api.py`（Qwen2.5-0.5B-Instruct + `lora_qa`），
+  前端直连 `http://127.0.0.1:8000`，地址在 `public/config.js` 的 `__LOCAL_MODEL__` 配置
+- **修复 PNA 拦截**：公网 HTTPS 页面访问本机地址时，预检响应必须带
+  `Access-Control-Allow-Private-Network: true`，已加到 `web_api.py` 与 `mock_model.py`
+- `mock_model.py` 补齐 CORS、OPTIONS 预检与 `/health` 字段，可离线验证前端链路
+- 新增 `scripts/test/live-models.cjs`：真机验证模型切换
+
+> 云端模型经后端调用，Key 不进前端；本地模型只在该台电脑上可用，
+> 其他设备选择它会提示「本地模型服务未启动」。
 
 ## v2.3.0 — 后端版：资源库 + 服务端鉴权（2026-10-29）
 
