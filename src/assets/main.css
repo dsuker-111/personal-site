@@ -211,6 +211,23 @@ button, input, textarea {
   gap: 14px;
 }
 
+.lib-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fff;
+  text-decoration: none;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  transition: filter 0.2s;
+}
+
+.lib-btn:hover {
+  filter: brightness(1.12);
+}
+
 .user-chip {
   display: inline-flex;
   align-items: center;

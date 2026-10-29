@@ -1,22 +1,15 @@
-// ===== 运行时配置（部署后可直接修改本文件，无需重新构建）=====
+// 运行时配置（部署后可直接改这个文件，无需重新打包）
 //
-// 当前启用：【模式 1】直连阿里云百炼
-//   - 优点：任何电脑打开网页都能对话，无需任何后端/本机服务
-//   - ⚠️  安全提醒：API Key 会随网页一起下发，访问者可在浏览器里看到。
-//       仅适合课程演示/个人使用。请务必：
-//         1. 在阿里云百炼控制台给该 Key 设置调用额度上限
-//         2. 演示结束后及时吊销或轮换该 Key
+// 当前模式：后端代理
+//   浏览器 → 阿里云函数计算（FC）→ 阿里云百炼 DashScope
+//   API Key 只存在函数计算的环境变量里，前端不接触。
 //
-// 想换成更安全的【模式 2】公网代理：
-//   把 __AI_DIRECT__ 置为 null，并填写 __AI_API_BASE__（如 https://你的代理域名/api）
-//
-// 【模式 3】本机代理：两者都留空，默认走 http://127.0.0.1:8000
+// 如需改回「浏览器直连」（不需要后端，但 Key 会暴露在前端），
+// 把 __API_BASE__ 置空，并填写下面的 __AI_DIRECT__。
 
-window.__AI_DIRECT__ = {
-  apiKey: 'sk-ws-H.YHXMYEH.zLSs.MEUCIFZhabJNuvDJqwb6IzX9B798FvA-jxchK0oty65X0WsMAiEA9G-lI4Zgu8121Q6VNiZA5LE1dxgym_1qZFO7OUxidLQ',
-  baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  model: 'deepseek-v4.1-flash'
-}
+window.__API_BASE__ = 'https://personasite-api-ovjtmwtnlx.cn-hangzhou.fcapp.run'
 
-// 公网代理地址（模式 2 时填写，例如 'https://your-proxy.example.com/api'）
+// 浏览器直连模式（默认关闭）
+window.__AI_DIRECT__ = null
+// 旧版本遗留的代理前缀，保持为空
 window.__AI_API_BASE__ = ''

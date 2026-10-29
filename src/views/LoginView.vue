@@ -12,21 +12,23 @@ const loading = ref(false)
 
 const canSubmit = computed(() => form.username.trim() && form.password)
 
-function submit() {
+async function submit() {
   if (loading.value) return
   error.value = ''
   loading.value = true
-  // 模拟网络延迟，便于看到加载态
-  setTimeout(() => {
-    const user = auth.login(form.username.trim(), form.password)
-    loading.value = false
+  try {
+    const user = await auth.login(form.username.trim(), form.password)
     if (!user) {
       error.value = '账号或密码错误，请重试。'
       return
     }
     const redirect = route.query.redirect || '/'
     router.replace(redirect)
-  }, 400)
+  } catch (e) {
+    error.value = '登录失败：' + (e && e.message ? e.message : '网络异常')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

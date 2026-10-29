@@ -1,25 +1,40 @@
-// 前端登录态管理（简单版，仅作演示）。
-// 真实项目应改为后端签发 token；这里使用 localStorage 持久化，刷新页面仍保持登录。
-// 默认账号 / 密码：见 docs，可在 store 常量处修改。
+// 登录态管理：有后端时走服务端校验并保存 token；无后端时回退到本地演示。
+import { request, setToken, clearToken, HAS_BACKEND } from '../api/http'
+
 const STORAGE_KEY = 'ps_auth_user'
-const DEFAULT_USER = {
-  username: 'admin',
-  password: '123456',
-  nickname: '管理员'
-}
+const LOCAL_USER = { username: 'admin', password: '123456', nickname: '管理员' }
 
 export const auth = {
-  login(username, password) {
-    if (username && password && username === DEFAULT_USER.username && password === DEFAULT_USER.password) {
-      const user = { username: username, nickname: DEFAULT_USER.nickname, loginAt: Date.now() }
+  async login(username, password) {
+    if (!username || !password) return null
+
+    if (HAS_BACKEND) {
+      const d = await request('/api/login', {
+        method: 'POST',
+        body: { username, password },
+        auth: false
+      })
+      if (!d || !d.ok) return null
+      setToken(d.token)
+      const user = { username, nickname: '管理员', loginAt: Date.now(), server: true }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+      return user
+    }
+
+    // 无后端（纯静态）时的本地演示登录
+    if (username === LOCAL_USER.username && password === LOCAL_USER.password) {
+      const user = { username, nickname: LOCAL_USER.nickname, loginAt: Date.now() }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       return user
     }
     return null
   },
+
   logout() {
+    clearToken()
     localStorage.removeItem(STORAGE_KEY)
   },
+
   currentUser() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -28,12 +43,13 @@ export const auth = {
       return null
     }
   },
+
   isLoggedIn() {
     return !!this.currentUser()
   }
 }
 
 export const DEFAULT_ACCOUNT = {
-  username: DEFAULT_USER.username,
-  password: DEFAULT_USER.password
+  username: LOCAL_USER.username,
+  password: LOCAL_USER.password
 }

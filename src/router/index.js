@@ -8,6 +8,12 @@ const routes = [
     meta: { requiresAuth: true, title: '个人主页' }
   },
   {
+    path: '/library',
+    name: 'library',
+    component: () => import('../views/LibraryView.vue'),
+    meta: { requiresAuth: true, title: '资源库' }
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginView.vue'),

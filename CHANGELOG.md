@@ -7,9 +7,29 @@
 | 大版本 | 分支 | Git tag | 线上目录 | 说明 |
 | --- | --- | --- | --- | --- |
 | v1.x | `release/v1` | `v1.0.0` | `/v1/` | 本地 Qwen + LoRA 模型版，代码冻结，仅修 bug |
-| v2.x | `main` | `v2.0.0` `v2.1.0` | `/`（根） | 阿里云百炼 `deepseek-v4.1-flash`，持续迭代 |
+| v2.x | `main` | `v2.0.0` `v2.1.0` `v2.2.0` `v2.3.0` | `/`（根） | 阿里云百炼 `deepseek-v4.1-flash`，持续迭代 |
 
 ---
+
+## v2.3.0 — 后端版：资源库 + 服务端鉴权（2026-10-29）
+
+**从纯静态升级为「前端 + 后端」，新增文件上传/下载/图片视频浏览，并接入阿里云函数计算。**
+
+- 新增 `server-fc/`：阿里云函数计算 FC 3.0 HTTP 函数（Python 3.10，零第三方依赖）
+  - `POST /api/login` 服务端校验密码，签发 HMAC 签名 token（有效期 7 天）
+  - `GET /api/files` 资源列表 · `POST /api/upload` 上传 · `POST /api/delete` 删除
+  - `GET /api/file?path=` 原样下载/预览 · `POST /api/chat` AI 对话代理 · `GET /api/health`
+  - 文件存储复用 `personal-site` 仓库的 `media` 分支（不触发 Pages 构建）
+- 新增 `server-fc/deploy.mjs`：一条命令完成打包、创建/更新函数、配置环境变量、绑定 HTTP 触发器
+- **API Key 移出前端**：`public/config.js` 不再包含任何密钥，改由函数计算环境变量持有
+- 新增 `src/api/http.js`（统一请求封装、token 管理）、`src/api/files.js`（资源库接口）
+- 新增 `src/views/LibraryView.vue`：拖拽上传、图片/视频/文件分类浏览、灯箱预览、下载、删除
+- 登录改为**真实后端校验**（`src/store/auth.js`），不再是前端写死密码比对
+- 首页导航新增「资源库」入口
+- 实测：线上登录、上传、列表、下载（字节一致）、删除、AI 真实对话全部通过
+
+> 环境变量：`GITHUB_TOKEN` `AUTH_PASSWORD` `AUTH_SECRET` `DASHSCOPE_API_KEY`
+> 后端地址：`https://personasite-api-ovjtmwtnlx.cn-hangzhou.fcapp.run`
 
 ## v2.2.0 — 双平台部署（2026-10-29）
 

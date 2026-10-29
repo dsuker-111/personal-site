@@ -28,6 +28,7 @@ function logout() {
         <span class="app-name">个人主页</span>
       </div>
       <div class="topbar-right">
+        <router-link class="lib-btn" to="/library">资源库</router-link>
         <span class="user-chip">
           <span class="avatar">{{ (user && user.nickname) ? user.nickname[0] : 'U' }}</span>
           {{ user && user.nickname }}

@@ -1,12 +1,29 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.2.0`**（Surge 双平台部署）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.3.0`**（后端版：资源库 + 服务端鉴权）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
-- **登录界面**：进入首页前需要登录，登录成功后跳转到主页面。
+- **登录界面**：进入首页前需要登录，**密码由后端校验**，校验通过后签发 token。
 - **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
-- **AI 对话框**：内置 AI 对话面板，接入 **阿里云百炼 `deepseek-v4.1-flash`**（同时保留本地 TRAE 训练模型 Qwen2.5-0.5B-Instruct + LoRA 的接入能力）。
+- **AI 对话框**：内置 AI 对话面板，接入 **阿里云百炼 `deepseek-v4.1-flash`**（API Key 只存在服务端）。
+- **资源库**：上传/浏览/下载图片、视频和文件，换台电脑打开网址即可访问。
+
+## 系统架构
+
+```
+浏览器 (Vue 3 SPA, Surge 托管)
+   │
+   ├── /api/login /api/files /api/upload /api/delete /api/file /api/chat
+   ▼
+阿里云函数计算 FC（Python 3.10，零第三方依赖）
+   │
+   ├── 文件读写 ──► GitHub 仓库 personal-site 的 media 分支
+   └── AI 对话  ──► 阿里云百炼 DashScope (deepseek-v4.1-flash)
+```
+
+**后端地址**：`https://personasite-api-ovjtmwtnlx.cn-hangzhou.fcapp.run`
+前端在 `public/config.js` 的 `window.__API_BASE__` 中配置该地址。
 
 ## 版本区分
 
@@ -14,7 +31,7 @@
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.2.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（浏览器直连） | 🟢 维护中 |
+| **v2.x** | `main` | `v2.3.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（后端代理） | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash
@@ -52,9 +69,37 @@ set SURGE_TOKEN=<你的 Surge token>   # 用 npx surge token 获取
 
 > Surge 免费版提供 `*.surge.sh` 子域名；自定义域名需把 CNAME 指向 `na-west1.surge.sh` 并在 Surge 后台登记。
 
-> ℹ️ **当前默认走「浏览器直连阿里云」，打开网页即可对话，无需本机启动任何服务。**
-> 若改回「本机代理」模式，公网 HTTPS 页面访问 `127.0.0.1` 会被浏览器 PNA 策略拦截，
-> 需在弹窗里点【允许本地网络访问】。三种模式的配置见下方「快速开始 → 2. 配置 AI 模型」。
+> ℹ️ **当前默认走后端代理**：浏览器 → 阿里云函数计算 → 阿里云百炼，**API Key 不进前端**，打开网页即可对话，无需本机启动任何服务。
+
+### 部署后端（阿里云函数计算）
+
+```bash
+# 需要环境变量（都只在本地/CI 使用，不要提交到仓库）
+set ALI_AK=<阿里云 AccessKey ID>
+set ALI_SK=<阿里云 AccessKey Secret>
+set GITHUB_TOKEN=<有 repo 写权限的 PAT>
+set AUTH_PASSWORD=123456
+set AUTH_SECRET=<随机字符串>
+set DASHSCOPE_API_KEY=<阿里云百炼 Key>
+
+npm run deploy:backend      # 打包 + 创建/更新函数 + 绑定 HTTP 触发器
+node server-fc/test-api.mjs # 接口自测
+```
+
+部署成功后会打印公网地址，把它填进 `public/config.js` 的 `window.__API_BASE__`，再重新发布前端。
+
+| 接口 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/health` | GET | 健康检查（无需登录） |
+| `/api/login` | POST | 校验密码，返回 token（7 天） |
+| `/api/files` | GET | 资源列表 |
+| `/api/upload` | POST | 上传（base64，单文件 ≤ 20MB） |
+| `/api/delete` | POST | 删除 |
+| `/api/file?path=` | GET | 原样下载 / 预览 |
+| `/api/chat` | POST | AI 对话代理 |
+
+> 文件实际存放在 GitHub 仓库 `personal-site` 的 `media` 分支，因此不需要对象存储。
+> 全局要求：登录后才能调用（除 `/api/health`、`/api/login`），token 放在 `Authorization: Bearer <token>`。
 
 ---
 
