@@ -1,6 +1,6 @@
 :root {
-  --bg: #0f172a;
-  --bg-2: #1e293b;
+  --bg: #f5f7fb;
+  --bg-2: #eef2f7;
   --card: #ffffff;
   --primary: #4f46e5;
   --primary-2: #7c3aed;
@@ -25,7 +25,12 @@ html, body {
 body {
   font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", -apple-system, sans-serif;
   color: var(--text);
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  /* 浅色底 + 两处极淡的主色光晕，避免整页发灰 */
+  background:
+    radial-gradient(900px 460px at 12% -8%, rgba(79, 70, 229, 0.1), transparent 60%),
+    radial-gradient(760px 420px at 92% -2%, rgba(124, 58, 237, 0.08), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -50,9 +55,10 @@ button, input, textarea {
   width: 100%;
   max-width: 400px;
   background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 40px 36px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
 }
 
 .login-brand {
@@ -167,9 +173,9 @@ button, input, textarea {
 }
 
 .topbar {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
-  color: #e2e8f0;
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -178,7 +184,7 @@ button, input, textarea {
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar-left {
@@ -233,7 +239,7 @@ button, input, textarea {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #e2e8f0;
+  color: var(--text);
 }
 
 .avatar {
@@ -250,8 +256,8 @@ button, input, textarea {
 
 .logout-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #e2e8f0;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
   border-radius: 8px;
   padding: 6px 14px;
   cursor: pointer;
@@ -260,7 +266,7 @@ button, input, textarea {
 }
 
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f1f5f9;
 }
 
 .content {
@@ -272,7 +278,7 @@ button, input, textarea {
 }
 
 .hero {
-  color: #e2e8f0;
+  color: var(--text);
   margin-bottom: 24px;
 }
 
@@ -282,16 +288,16 @@ button, input, textarea {
 }
 
 .hero p {
-  color: #cbd5e1;
+  color: var(--text-soft);
   line-height: 1.7;
 }
 
 .model-tag {
   display: inline-block;
   margin-top: 12px;
-  background: rgba(124, 58, 237, 0.2);
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  color: #e9d5ff;
+  background: #eef2ff;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  color: var(--primary);
   border-radius: 999px;
   padding: 5px 14px;
   font-size: 13px;
@@ -299,9 +305,10 @@ button, input, textarea {
 
 .panel {
   background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
 .panel h3 {
@@ -557,17 +564,18 @@ button, input, textarea {
 
 .footer {
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-soft);
   font-size: 13px;
   padding: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border);
 }
 /* ============ 天气（主页主界面） ============ */
 .weather-card {
   background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 18px;
   padding: 22px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .wx-top {
@@ -886,8 +894,8 @@ button, input, textarea {
   background: #fff;
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 26px 60px rgba(2, 6, 23, 0.45);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.18);
 }
 
 .cw-head {
@@ -1074,7 +1082,7 @@ button, input, textarea {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(2, 6, 23, 0.55);
+  background: rgba(15, 23, 42, 0.35);
   backdrop-filter: blur(2px);
 }
 
@@ -1088,7 +1096,7 @@ button, input, textarea {
   color: var(--text);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 30px 70px rgba(2, 6, 23, 0.5);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.22);
 }
 
 .mf-head {

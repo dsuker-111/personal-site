@@ -1,6 +1,6 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.8.0`**（天气主页 + 浮动 AI 对话框 + 个人档案 + 本地模型自检）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.9.0`**（浅色界面 · 天气主页 + 浮动 AI 对话框 + 个人档案 + 本地模型自检）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
@@ -81,7 +81,7 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.8.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 天气主页 + 浮动对话框 + 个人档案 + 本地模型自检 | 🟢 维护中 |
+| **v2.x** | `main` | `v2.9.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 浅色界面 · 天气主页 + 浮动对话框 + 个人档案 + 本地模型自检 | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash
@@ -161,6 +161,7 @@ node server-fc/test-api.mjs # 接口自测
 | 登录 | 账号 + 密码，服务端校验签发 token；后端不可用时降级到本地演示账号，保证还能进入 |
 | 天气主界面 | 实时天气 + 5 天预报，城市搜索 / 常用城市快选，优先走后端缓存，失败自动直连 Open-Meteo |
 | 个人档案 | 左侧实时名片（含经历时间线）、右侧分区表单：基本信息 / 教育与职业 / 职业经历（可增删多段）/ 技能 / 联系方式 / 天气；保存后回主页 |
+| 界面主题 | 全站浅色：浅灰底 + 极淡主色光晕、白色卡片带描边，紫色只作按钮/标题等强调色 |
 | AI 对话框 | 右下角浮动窗口，Esc 收起；首次打开才挂载，不拖慢主页 |
 | AI 对话 | 健康检查、多轮上下文、错误降级、动态显示当前模型名 |
 | 云端模型 | 阿里云百炼 `deepseek-v4.1-flash` 等 4 个模型，经后端调用，Key 不出服务端 |

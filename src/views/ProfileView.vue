@@ -436,6 +436,7 @@ function linkOf(v) {
   position: sticky;
   top: 84px;
   background: #fff;
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 22px 20px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.1);
@@ -604,6 +605,7 @@ function linkOf(v) {
 /* ---------- 表单 ---------- */
 .pf-form-wrap {
   background: #fff;
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 22px 24px 26px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.1);

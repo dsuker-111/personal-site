@@ -516,7 +516,7 @@ onMounted(() => {
 .thumb {
   position: relative;
   aspect-ratio: 4 / 3;
-  background: #0f172a;
+  background: #eef2f7;
   display: grid;
   place-items: center;
   cursor: zoom-in;
@@ -547,10 +547,10 @@ onMounted(() => {
   place-items: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #1e293b, #334155);
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
 }
 .glyph-ext {
-  color: #fff;
+  color: var(--primary, #4f46e5);
   font-weight: 700;
   font-size: 22px;
   letter-spacing: 1px;

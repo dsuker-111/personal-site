@@ -21,3 +21,6 @@ shots/
 
 # 本地截图 / 测试产物
 .tmpmedia/
+
+# 本地模型 venv（不要提交）
+.venv-lora/
