@@ -287,6 +287,101 @@ def chat(prompt, history, model=None):
     return {"answer": answer, "model": data.get("model") or MODEL_NAME}
 
 
+# ---------------------------------------------------------------- 天气
+
+# WMO 天气代码 → 中文描述 + 图标
+WMO_TEXT = {
+    0: ("晴", "☀️"), 1: ("大部晴朗", "🌤️"), 2: ("多云", "⛅"), 3: ("阴", "☁️"),
+    45: ("雾", "🌫️"), 48: ("雾凇", "🌫️"),
+    51: ("小毛毛雨", "🌦️"), 53: ("毛毛雨", "🌦️"), 55: ("大毛毛雨", "🌦️"),
+    56: ("冻毛毛雨", "🌧️"), 57: ("冻毛毛雨", "🌧️"),
+    61: ("小雨", "🌧️"), 63: ("中雨", "🌧️"), 65: ("大雨", "🌧️"),
+    66: ("冻雨", "🌧️"), 67: ("冻雨", "🌧️"),
+    71: ("小雪", "🌨️"), 73: ("中雪", "🌨️"), 75: ("大雪", "🌨️"), 77: ("雪粒", "🌨️"),
+    80: ("阵雨", "🌦️"), 81: ("强阵雨", "🌦️"), 82: ("暴雨", "⛈️"),
+    85: ("阵雪", "🌨️"), 86: ("强阵雪", "🌨️"),
+    95: ("雷阵雨", "⛈️"), 96: ("雷阵雨伴冰雹", "⛈️"), 99: ("雷暴冰雹", "⛈️"),
+}
+
+_wmo = lambda code: WMO_TEXT.get(int(code or 0), ("未知", "❓"))
+WEATHER_TTL = 600
+_weather_cache = {}
+
+
+def _http_json(url, timeout=12):
+    req = urllib.request.Request(url, headers={"User-Agent": "personal-site-weather"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "ignore"))
+
+
+def weather(city):
+    """查询城市天气。数据源：Open-Meteo（免费、无需 Key）。"""
+    city = (city or "杭州").strip()[:40]
+    now = time.time()
+    cached = _weather_cache.get(city)
+    if cached and now - cached[0] < WEATHER_TTL:
+        return cached[1]
+
+    geo = _http_json(
+        "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1&language=zh&format=json"
+        % urllib.parse.quote(city)
+    )
+    results = geo.get("results") or []
+    if not results:
+        raise ValueError("没有找到这个城市：%s" % city)
+    g = results[0]
+
+    lat, lon = g.get("latitude"), g.get("longitude")
+    fc = _http_json(
+        "https://api.open-meteo.com/v1/forecast"
+        "?latitude=%s&longitude=%s"
+        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,"
+        "weather_code,wind_speed_10m"
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,"
+        "precipitation_probability_max"
+        "&timezone=auto&forecast_days=5" % (lat, lon)
+    )
+
+    cur = fc.get("current") or {}
+    text, icon = _wmo(cur.get("weather_code"))
+    daily_in = fc.get("daily") or {}
+    days = []
+    for i, date in enumerate(daily_in.get("time") or []):
+        dcode = (daily_in.get("weather_code") or [0] * 8)[i]
+        dtext, dicon = _wmo(dcode)
+        days.append({
+            "date": date,
+            "max": (daily_in.get("temperature_2m_max") or [None] * 8)[i],
+            "min": (daily_in.get("temperature_2m_min") or [None] * 8)[i],
+            "rain": (daily_in.get("precipitation_probability_max") or [0] * 8)[i],
+            "code": dcode,
+            "text": dtext,
+            "icon": dicon,
+        })
+
+    result = {
+        "city": g.get("name") or city,
+        "region": " ".join(x for x in [g.get("country"), g.get("admin1")] if x),
+        "lat": lat,
+        "lon": lon,
+        "current": {
+            "temp": cur.get("temperature_2m"),
+            "feels": cur.get("apparent_temperature"),
+            "humidity": cur.get("relative_humidity_2m"),
+            "wind": cur.get("wind_speed_10m"),
+            "code": cur.get("weather_code"),
+            "text": text,
+            "icon": icon,
+            "time": cur.get("time"),
+        },
+        "daily": days,
+        "source": "open-meteo.com",
+        "updatedAt": int(now),
+    }
+    _weather_cache[city] = (now, result)
+    return result
+
+
 # ---------------------------------------------------------------- 入口
 
 def handler(event, context):
@@ -342,6 +437,14 @@ def handler(event, context):
         if not hmac.compare_digest(pwd, AUTH_PASSWORD):
             return _resp(200, {"ok": False, "error": "密码错误"})
         return _resp(200, {"ok": True, "token": make_token(), "expiresIn": TOKEN_TTL})
+
+    # ---- 天气（只读公共数据，无需登录）
+    if path in ("/api/weather", "/weather"):
+        city = query.get("city") or "杭州"
+        try:
+            return _resp(200, dict({"ok": True}, **weather(city)))
+        except Exception as e:
+            return _resp(200, {"ok": False, "error": "天气查询失败：%s" % e})
 
     # ---- 以下接口需要登录
     # <img> / <video> 无法设置请求头，所以也接受 ?token= 查询参数

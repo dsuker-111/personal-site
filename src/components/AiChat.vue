@@ -194,7 +194,7 @@ defineExpose({ send })
         ref="inputEl"
         v-model="input"
         rows="1"
-        placeholder="输入你的问题，Enter 发送，Shift+Enter 换行"
+        placeholder="输入问题，Enter 发送（Shift+Enter 换行）"
         @keydown.enter.exact.prevent="send()"
       ></textarea>
       <button class="send-btn" type="submit" :disabled="busy || !input.trim()">

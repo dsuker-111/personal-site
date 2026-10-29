@@ -18,3 +18,6 @@ server-fc/code.zip
 server-fc/code.b64
 server-fc/api-url.txt
 shots/
+
+# 本地截图 / 测试产物
+.tmpmedia/

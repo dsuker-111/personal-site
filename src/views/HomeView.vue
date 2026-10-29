@@ -1,18 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '../store/auth'
-import AiChat from '../components/AiChat.vue'
+import WeatherPanel from '../components/WeatherPanel.vue'
+import ChatWidget from '../components/ChatWidget.vue'
 
 const router = useRouter()
 const user = ref(auth.currentUser())
-
-const quickQuestions = [
-  '你好，介绍一下自己',
-  '你能做些什么？',
-  '介绍一下 deepseek-v4.1-flash 的特点',
-  '写一段 Vue 3 的组合式 API 示例'
-]
 
 function logout() {
   auth.logout()
@@ -40,30 +34,21 @@ function logout() {
     <main class="content">
       <section class="hero">
         <h2>欢迎回来，{{ user && user.nickname }}！</h2>
-        <p>这是基于 Vue 3 的个人网页。登录后可在下方 AI 助手中对话，支持切换多个云端模型，也能接入本机训练的 LoRA 模型。</p>
-        <div class="model-tag">模型：deepseek-v4.1-flash / qwen-plus / qwen-max / qwen-long · 阿里云百炼</div>
+        <p>
+          主页展示实时天气，右下角的 <strong>AI 助手</strong> 是一个浮动对话框 —— 点开即可对话，
+          支持切换云端模型，也能接入本机训练的 LoRA 模型。
+        </p>
       </section>
 
-      <section class="panel">
-        <h3>AI 助手</h3>
-        <p class="panel-desc">对话框上方可切换模型：云端模型经阿里云百炼提供服务，打开网页即可用；本地模型需要在你自己的电脑上运行 <code>server/web_api.py</code>。</p>
-
-        <div class="quick">
-          <span class="quick-label">试试：</span>
-          <button
-            v-for="q in quickQuestions"
-            :key="q"
-            class="quick-btn"
-            @click="$refs.chat.send(q)"
-          >{{ q }}</button>
-        </div>
-
-        <AiChat ref="chat" />
-      </section>
+      <!-- 主界面：天气 -->
+      <WeatherPanel />
     </main>
 
     <footer class="footer">
       QQ 软件开发工程实践 · 个人网页 V1.0
     </footer>
+
+    <!-- AI 对话：浮动对话框 -->
+    <ChatWidget />
   </div>
 </template>

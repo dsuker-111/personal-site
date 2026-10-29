@@ -1,12 +1,12 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.4.0`**（多模型切换 + 本地 LoRA 接入）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.5.0`**（天气主页 + 浮动 AI 对话框）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
 - **登录界面**：进入首页前需要登录，**密码由后端校验**，校验通过后签发 token。
-- **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
-- **AI 对话框**：可选 **4 个云端模型**（阿里云百炼）与 **TRAE 训练的本地 LoRA 模型**。
+- **天气主界面**：登录后看到的第一个页面就是天气 —— 实时气温、体感、湿度、风速 + 5 天预报，可搜索城市。
+- **AI 对话框（浮动窗口）**：右下角常驻「💬 AI 助手」按钮，点开是一个浮动对话框，可选 **4 个云端模型**与 **TRAE 训练的本地 LoRA 模型**，不打扰天气主界面。
 - **资源库**：上传/浏览/下载图片、视频和文件，换台电脑打开网址即可访问。
 
 ## 支持的模型
@@ -43,11 +43,13 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 浏览器 (Vue 3 SPA, Surge 托管)
    │
    ├── /api/login /api/files /api/upload /api/delete /api/file /api/chat
-   ▼
+   ├── /api/weather ─────────────────┐
+   ▼                                 │
 阿里云函数计算 FC（Python 3.10，零第三方依赖）
-   │
+   │                                 │
    ├── 文件读写 ──► GitHub 仓库 personal-site 的 media 分支
-   └── AI 对话  ──► 阿里云百炼 DashScope (deepseek-v4.1-flash)
+   ├── AI 对话  ──► 阿里云百炼 DashScope (deepseek-v4.1-flash)
+   └── 天气查询 ──► Open-Meteo（免 Key）◄── 后端不可用时浏览器直连（降级）
 ```
 
 **后端地址**：`https://personasite-api-ovjtmwtnlx.cn-hangzhou.fcapp.run`
@@ -59,7 +61,7 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.4.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 云端多模型 + 本地 LoRA | 🟢 维护中 |
+| **v2.x** | `main` | `v2.5.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 天气主页 + 浮动对话框（云端多模型 + 本地 LoRA） | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash
@@ -119,6 +121,7 @@ node server-fc/test-api.mjs # 接口自测
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
 | `/api/health` | GET | 健康检查（无需登录） |
+| `/api/weather?city=` | GET | 天气查询（无需登录，10 分钟缓存） |
 | `/api/login` | POST | 校验密码，返回 token（7 天） |
 | `/api/files` | GET | 资源列表 |
 | `/api/upload` | POST | 上传（base64，单文件 ≤ 20MB） |
@@ -127,7 +130,7 @@ node server-fc/test-api.mjs # 接口自测
 | `/api/chat` | POST | AI 对话代理 |
 
 > 文件实际存放在 GitHub 仓库 `personal-site` 的 `media` 分支，因此不需要对象存储。
-> 全局要求：登录后才能调用（除 `/api/health`、`/api/login`），token 放在 `Authorization: Bearer <token>`。
+> 全局要求：登录后才能调用（除 `/api/health`、`/api/login`、`/api/weather`），token 放在 `Authorization: Bearer <token>`。
 
 ---
 
@@ -135,10 +138,11 @@ node server-fc/test-api.mjs # 接口自测
 
 | 模块 | 说明 |
 | --- | --- |
-| 登录 | 账号 + 密码，本地模拟鉴权，localStorage 持久化登录态 |
-| 主页面 | 顶栏（用户信息 / 退出）、欢迎区、AI 助手面板、快捷提问 |
+| 登录 | 账号 + 密码，服务端校验签发 token；后端不可用时降级到本地演示账号，保证还能进入 |
+| 天气主界面 | 实时天气 + 5 天预报，城市搜索 / 常用城市快选，优先走后端缓存，失败自动直连 Open-Meteo |
+| AI 对话框 | 右下角浮动窗口，Esc 收起；首次打开才挂载，不拖慢主页 |
 | AI 对话 | 健康检查、多轮上下文、错误降级、动态显示当前模型名 |
-| 云端模型 | 阿里云百炼 `deepseek-v4.1-flash`。默认走**浏览器直连**（`public/config.js`），任何电脑打开网址即可对话 |
+| 云端模型 | 阿里云百炼 `deepseek-v4.1-flash` 等 4 个模型，经后端调用，Key 不出服务端 |
 | 本地模型（可选） | TRAE 训练 `Qwen2.5-0.5B-Instruct` + LoRA `lora_qa`，经 `server/web_api.py` 提供服务 |
 
 **默认账号**：`admin`　**默认密码**：`123456`
@@ -162,19 +166,29 @@ personal-site/
 │   ├── web_api.py            本地模型服务（FastAPI，加载 Qwen + LoRA，可选）
 │   ├── mock_model.py         假模型服务，用于纯前端联调
 │   └── requirements.txt      web_api.py 所需 Python 依赖
+├── server-fc/
+│   ├── index.py              函数计算后端（登录 / 资源库 / AI / 天气）
+│   ├── deploy.mjs            一键部署到阿里云 FC
+│   └── dev_server.py         本地跑同一个 handler，无需上云即可自测
 ├── server-vercel/            Vercel Serverless 版代理（国内不可用，备查）
 └── src/
     ├── main.js               Vue 应用入口 + 路由守卫
     ├── App.vue               根组件
     ├── assets/
     │   └── main.css          全局样式
-    ├── router/index.js       路由（/ 主页，/login 登录）
+    ├── router/index.js       路由（/ 主页，/library 资源库，/login 登录）
     ├── store/auth.js         登录态管理
-    ├── api/model.js          模型服务 API 封装
-    ├── components/AiChat.vue AI 对话框组件
+    ├── api/
+    │   ├── model.js          模型服务 API 封装
+    │   └── weather.js        天气数据（后端优先 + Open-Meteo 直连降级）
+    ├── components/
+    │   ├── AiChat.vue        AI 对话内容组件
+    │   ├── ChatWidget.vue    浮动对话框外壳（气泡按钮 + 窗口）
+    │   └── WeatherPanel.vue  天气主面板
     └── views/
         ├── LoginView.vue     登录页
-        └── HomeView.vue      主页面
+        ├── HomeView.vue      主页（天气为主 + 浮动 AI）
+        └── LibraryView.vue   资源库
 ```
 
 ---

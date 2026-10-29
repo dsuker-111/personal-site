@@ -9,16 +9,26 @@ export const auth = {
     if (!username || !password) return null
 
     if (HAS_BACKEND) {
-      const d = await request('/api/login', {
-        method: 'POST',
-        body: { username, password },
-        auth: false
-      })
-      if (!d || !d.ok) return null
-      setToken(d.token)
-      const user = { username, nickname: '管理员', loginAt: Date.now(), server: true }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
-      return user
+      try {
+        const d = await request('/api/login', {
+          method: 'POST',
+          body: { username, password },
+          auth: false
+        })
+        if (!d || !d.ok) return null
+        setToken(d.token)
+        const user = { username, nickname: '管理员', loginAt: Date.now(), server: true }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+        return user
+      } catch (err) {
+        // 后端不可用（停服 / 欠费 / 断网）时降级到本地演示账号，保证页面仍能进入
+        if (username === LOCAL_USER.username && password === LOCAL_USER.password) {
+          const user = { username, nickname: LOCAL_USER.nickname, loginAt: Date.now(), offline: true }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+          return user
+        }
+        throw err
+      }
     }
 
     // 无后端（纯静态）时的本地演示登录
