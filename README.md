@@ -13,8 +13,21 @@
 - **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
 - **登录账号**：`admin / 123456`
 
-> ⚠️ AI 对话框调用的是**你本机的代理服务**（http://127.0.0.1:8000）。线上页面是静态站，浏览器会直接请求本机 8000 端口（127.0.0.1 属浏览器信任的 loopback，HTTPS 页面也可调用）。
-> 因此：**只有在你本机运行 `server/cloud_api.py` 时，线上页面才能收到模型答复**；未运行时会提示「未检测到 AI 代理服务」。
+> ⚠️ **重要：公网 HTTPS 页面无法直接请求本机 127.0.0.1**
+> Chrome/Edge 的私有网络访问（Private Network Access）策略会拦截「公网页面 → 本机地址」的请求：
+> `Permission was denied for this request to access the loopback address space`。
+> 因此线上 GitHub Pages 页面**不能**直接调用本机代理。有三种用法：
+>
+> | 方式 | 说明 | AI 是否可用 |
+> | --- | --- | --- |
+> | ① 本地运行站点 | `npm run dev` 或 `npm run preview`，用 `http://localhost:5173` 访问 | ✅ 可用 |
+> | ② 把代理部署到公网 | 将 `server/cloud_api.py` 部署到云主机/函数计算，得到 HTTPS 地址 | ✅ 可用 |
+> | ③ 直接用线上 Pages | 仅 UI 演示 | ❌ 被浏览器拦截 |
+>
+> 方式 ② 部署好后，修改 `public/config.js` 里的地址即可，无需改代码：
+> ```js
+> window.__AI_API_BASE__ = 'https://你的代理域名'
+> ```
 
 ---
 

@@ -118,6 +118,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # Chrome 私有网络访问（Public → localhost）要求显式放行，
+        # 否则 GitHub Pages 等公网 HTTPS 页面无法请求本机 127.0.0.1
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
         self.wfile.write(body)
 
@@ -125,7 +128,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network")
+        self.send_header("Access-Control-Max-Age", "600")
+        # 关键：允许公网页面访问本机（Private Network Access 预检）
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
 
     def do_GET(self):

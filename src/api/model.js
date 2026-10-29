@@ -9,10 +9,18 @@
 // （127.0.0.1 属浏览器 loopback 信任域，HTTPS 页面亦可调用）。
 
 const IS_PROD = import.meta.env.PROD === true
-const BASE_URL = IS_PROD ? 'http://127.0.0.1:8000' : '/api'
+
+// API 地址优先级：
+//   1) 运行时注入 window.__AI_API_BASE__（public/config.js，部署后可直接改）
+//   2) 构建时环境变量 VITE_API_BASE（可用于指向云端代理，如 https://xxx.onrender.com）
+//   3) 开发环境走 vite 代理 /api；生产默认本机 127.0.0.1:8000
+const RUNTIME_BASE =
+  (typeof window !== 'undefined' && window.__AI_API_BASE__) || ''
+const ENV_BASE = import.meta.env.VITE_API_BASE || ''
+const BASE_URL = (RUNTIME_BASE || ENV_BASE || (IS_PROD ? 'http://127.0.0.1:8000' : '/api')).replace(/\/+$/, '')
 
 export const MODEL = {
-  url: 'http://127.0.0.1:8000',
+  url: BASE_URL,
   fallbackName: 'deepseek-v4.1-flash'
 }
 
