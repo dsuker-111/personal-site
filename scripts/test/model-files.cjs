@@ -1,32 +1,52 @@
-// 验证：本地模型旁「检查模型文件」→ 弹窗自检结果
+﻿// 验证：本地模型旁「检查模型文件」→ 弹窗自检结果
 const { chromium } = require('playwright')
 
-const URL = process.env.APP_URL || 'http://localhost:5173/'
+const APP_URL = process.env.APP_URL || 'http://localhost:5173/'
 
 ;(async () => {
+  // 注意：不要再加 --enable-features=LocalNetworkAccessChecks。
+  // 新版 Edge/Chrome 默认就启用本地网络访问检查，手动开启反而会让
+  // 无头模式下 fetch 被拦（表现为「无法连接本地服务」）。
   const browser = await chromium.launch({
     channel: 'msedge',
-    headless: true,
-    // 无头环境不会弹「访问本地网络」授权框，用这两个开关让授权生效（真实浏览器不需要）
-    args: [
-      '--enable-features=LocalNetworkAccessChecks',
-      '--disable-features=BlockInsecurePrivateNetworkRequests'
-    ]
+    headless: true
   })
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   // 从公网 HTTPS 页面访问 127.0.0.1 属于私有网络访问，需要授权；真实浏览器会弹窗让你点【允许】
   try {
-    await context.grantPermissions(['local-network-access'], { origin: new URL(URL).origin })
-  } catch {
-    /* 本地 http 源不需要 */
+    const origin = new URL(APP_URL).origin
+    await context.grantPermissions(['local-network-access'], { origin })
+    console.log('0) 已授权本地网络访问:', origin)
+  } catch (e) {
+    console.log('0) 授权失败（本地 http 源不需要）:', String(e.message).slice(0, 80))
   }
   const page = await context.newPage()
 
-  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  page.on('requestfailed', (r) => {
+    if (r.url().includes('127.0.0.1')) {
+      console.log('   [请求失败]', r.url(), '→', (r.failure() || {}).errorText)
+    }
+  })
+  page.on('response', (r) => {
+    if (r.url().includes('127.0.0.1')) console.log('   [响应]', r.status(), r.url())
+  })
+
+  await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await page.fill('input[autocomplete="username"]', 'admin')
   await page.fill('input[autocomplete="current-password"]', '123456')
   await page.click('.login-btn')
   await page.waitForSelector('.wx-temp', { timeout: 20000 })
+
+  // 探针：确认这个上下文能不能连本机服务（隔离「权限问题」和「应用问题」）
+  const warm = await page.evaluate(async () => {
+    try {
+      const r = await fetch('http://127.0.0.1:8000/health', { cache: 'no-store' })
+      return 'HTTP ' + r.status
+    } catch (e) {
+      return 'ERR ' + e.message
+    }
+  })
+  console.log('0) 登录后探针:', warm)
 
   // 打开浮动对话框并切到本地模型
   await page.click('.chat-fab')
