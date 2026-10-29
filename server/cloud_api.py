@@ -73,6 +73,9 @@ def call_dashscope(messages, max_tokens=512, temperature=0.7):
         "messages": messages,
         "max_tokens": int(max_tokens),
         "temperature": float(temperature),
+        # deepseek-v4.1-flash 默认开启推理，会消耗大量 reasoning tokens 且变慢；
+        # 个人助手场景关闭思考，响应更快、内容更直接。
+        "enable_thinking": False,
         "stream": False,
     }
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")

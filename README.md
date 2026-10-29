@@ -38,7 +38,7 @@
 | 登录 | 账号 + 密码，本地模拟鉴权，localStorage 持久化登录态 |
 | 主页面 | 顶栏（用户信息 / 退出）、欢迎区、AI 助手面板、快捷提问 |
 | AI 对话 | 健康检查、多轮上下文、错误降级、动态显示当前模型名 |
-| 云端模型 | 阿里云百炼 `deepseek-v4.1-flash`，经 `server/cloud_api.py` 代理（**API Key 只存服务端**） |
+| 云端模型 | 阿里云百炼 `deepseek-v4.1-flash`。默认走**浏览器直连**（`public/config.js`），任何电脑打开网址即可对话 |
 | 本地模型（可选） | TRAE 训练 `Qwen2.5-0.5B-Instruct` + LoRA `lora_qa`，经 `server/web_api.py` 提供服务 |
 
 **默认账号**：`admin`　**默认密码**：`123456`
@@ -55,12 +55,14 @@ personal-site/
 ├── package.json              依赖与脚本
 ├── vite.config.js            Vite 配置（含 /api 代理到本地模型服务）
 ├── public/
-│   └── favicon.svg           图标
+│   ├── favicon.svg           图标
+│   └── config.js             运行时配置（AI 模式与地址，部署后可改）
 ├── server/
-│   ├── cloud_api.py          阿里云百炼代理（零依赖，推荐使用）
+│   ├── cloud_api.py          阿里云百炼代理（零依赖，本机/服务器均可跑）
 │   ├── web_api.py            本地模型服务（FastAPI，加载 Qwen + LoRA，可选）
 │   ├── mock_model.py         假模型服务，用于纯前端联调
 │   └── requirements.txt      web_api.py 所需 Python 依赖
+├── server-vercel/            Vercel Serverless 版代理（国内不可用，备查）
 └── src/
     ├── main.js               Vue 应用入口 + 路由守卫
     ├── App.vue               根组件
@@ -85,11 +87,21 @@ personal-site/
 npm install
 ```
 
-### 2. 启动 AI 代理服务（接入阿里云 deepseek-v4.1-flash）
+### 2. 配置 AI 模型（三选一，默认已配好直连）
 
-**零依赖**，只需要 Python 3（无需 pip install）。
+前端支持三种后端，在 `public/config.js` 里切换：
 
-先到[阿里云百炼控制台](https://bailian.console.aliyun.com/)创建 API Key，然后：
+| 模式 | 配置方式 | 适用场景 | Key 是否安全 |
+| --- | --- | --- | --- |
+| ① 浏览器直连阿里云（**默认**） | 填 `window.__AI_DIRECT__.apiKey` | 任何电脑打开网址即可用 | ⚠️ 会暴露在前端 |
+| ② 公网代理 | 填 `window.__AI_API_BASE__` | 部署到云服务器/函数计算 | ✅ 只在服务端 |
+| ③ 本机代理 | 两者留空 | 仅本机开发使用 | ✅ 只在服务端 |
+
+**模式 ①（当前启用）**：`public/config.js` 中已填入 Key，开箱即用。
+
+> ⚠️ 直连模式的 Key 会随网页下发，访问者可在浏览器看到。**请务必在阿里云百炼控制台给该 Key 设置调用额度上限，演示结束后及时吊销/轮换。**
+
+**模式 ③ 本机代理**（零依赖，只需 Python 3）：
 
 ```bat
 :: Windows
@@ -117,7 +129,7 @@ python server/cloud_api.py
 - `GET /health` —— 健康检查，返回当前模型与是否已配置 Key
 - `POST /chat` —— 对话，请求体 `{ "prompt": "...", "history": [], "max_tokens": 512, "temperature": 0.7 }`
 
-> 🔐 **API Key 只保存在本机服务端环境变量中**，不会打包进前端，也不会提交到仓库。
+> 🔐 模式 ②③ 下 **API Key 只保存在服务端环境变量中**，不会打包进前端。
 
 ### 3. 启动前端
 
@@ -156,27 +168,29 @@ npm run preview   # 本地预览构建产物
 
 - 前端：Vue 3 · Vite 5 · Vue Router 4
 - 样式：原生 CSS（响应式，适配 PC / 移动端）
-- AI 代理：Python 标准库（零依赖），对接阿里云百炼 OpenAI 兼容接口
+- AI：阿里云百炼 `deepseek-v4.1-flash`（OpenAI 兼容接口）
+- 后端（可选）：Python 标准库零依赖代理 / Vercel Serverless
 - 可选本地模型：FastAPI · Transformers · PEFT
 
 ---
 
 ## 验证
 
-已通过以下验证（系统 Edge 无头浏览器 + 生产构建产物实测）：
+已通过以下验证（系统 Edge 无头浏览器实测）：
 
 - 登录页正常渲染，`admin / 123456` 登录后跳转主页。
 - 主页顶栏、欢迎区、AI 对话面板、4 个快捷提问按钮均正常。
-- 阿里云代理链路：`/health` 显示 `已连接 · deepseek-v4.1-flash`；发送消息可收到回复（用 `mock_dashscope.py` 模拟上游验证完整转发，含 `Authorization` 与多轮上下文）。
+- **直连模式真实调用阿里云成功**：状态显示 `已连接 · deepseek-v4.1-flash`，回复为模型真实生成内容，0 JS 报错。
+- 代理模式：`/health` 与 `/chat` 正常，正确透传 `Authorization` 与多轮上下文（用 `mock_dashscope.py` 模拟上游）。
 - 快捷提问按钮可正常触发发送。
-- 代理未启动时，对话框显示「未检测到 AI 代理服务」，前端无 JS 报错。
 - 退出登录后回到 `/login`。
 
 测试脚本见 `scripts/test/`（需 `playwright` + 系统 Edge）：
 
 ```bash
 node scripts/test/verify.cjs       # 页面结构与路由验证
-node scripts/test/prod-flow.cjs    # 生产产物：登录 → 对话 → 快捷提问
+node scripts/test/direct-flow.cjs  # 直连模式：登录 → 真实调用阿里云
+node scripts/test/prod-flow.cjs    # 代理模式：登录 → 对话 → 快捷提问
 node scripts/test/live-check.cjs   # 线上 GitHub Pages 站点验证
 ```
 
@@ -184,7 +198,8 @@ node scripts/test/live-check.cjs   # 线上 GitHub Pages 站点验证
 
 - [ ] 登录为前端本地模拟，未接入后端数据库鉴权
 - [ ] AI 对话为一次性请求返回，未实现流式输出（SSE）
-- [ ] 线上站点依赖本机代理运行（`server/cloud_api.py`），如需纯在线可用，需把代理部署到云服务器
+- [ ] 直连模式下 API Key 暴露在前端，仅适合演示，正式上线请改为公网代理（模式 ②）
+- [ ] Vercel / Cloudflare 域名在国内被 DNS 污染，不可用；如要公网代理，建议用阿里云函数计算或国内云主机
 - [ ] 第一版仅含上述核心功能，后续可按需扩展留言板、作品集等模块
 
 ---

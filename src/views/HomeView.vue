@@ -45,7 +45,7 @@ function logout() {
 
       <section class="panel">
         <h3>AI 助手</h3>
-        <p class="panel-desc">下方对话框连接本机 AI 代理（http://127.0.0.1:8000），代理再转发到阿里云百炼。首次使用请先运行 <code>server/cloud_api.py</code> 并配置 <code>DASHSCOPE_API_KEY</code>。</p>
+        <p class="panel-desc">下方对话框已接入阿里云百炼 <code>deepseek-v4.1-flash</code>，打开网页即可对话，无需本机启动任何服务。</p>
 
         <div class="quick">
           <span class="quick-label">试试：</span>
