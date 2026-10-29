@@ -1,12 +1,10 @@
 # 个人网页 · AI 助手（Personal Site）
 
-# 个人网页 · AI 助手（Personal Site）
-
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页第一版：
 
 - **登录界面**：进入首页前需要登录，登录成功后跳转到主页面。
 - **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
-- **AI 对话框**：内置 AI 对话面板，可与本机 **TRAE 训练**的本地模型 **Qwen2.5-0.5B-Instruct + LoRA(lora_qa)** 对话。
+- **AI 对话框**：内置 AI 对话面板，接入 **阿里云百炼 `deepseek-v4.1-flash`**（同时保留本地 TRAE 训练模型 Qwen2.5-0.5B-Instruct + LoRA 的接入能力）。
 
 ## 上线状态
 
@@ -15,7 +13,8 @@
 - **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
 - **登录账号**：`admin / 123456`
 
-> ⚠️ AI 对话面板调用的本地模型服务（http://127.0.0.1:8000）运行在你自己电脑上，因此**只有在你本机运行 `server/web_api.py` 时**，线上页面才能收到模型答复；未运行时页面会提示「未检测到本地模型服务」。
+> ⚠️ AI 对话框调用的是**你本机的代理服务**（http://127.0.0.1:8000）。线上页面是静态站，浏览器会直接请求本机 8000 端口（127.0.0.1 属浏览器信任的 loopback，HTTPS 页面也可调用）。
+> 因此：**只有在你本机运行 `server/cloud_api.py` 时，线上页面才能收到模型答复**；未运行时会提示「未检测到 AI 代理服务」。
 
 ---
 
@@ -25,8 +24,9 @@
 | --- | --- |
 | 登录 | 账号 + 密码，本地模拟鉴权，localStorage 持久化登录态 |
 | 主页面 | 顶栏（用户信息 / 退出）、欢迎区、AI 助手面板、快捷提问 |
-| AI 对话 | 流式/请求式对话，健康检查，错误降级，内置模型状态提示 |
-| 本地模型 | 由 TRAE 训练 `Qwen2.5-0.5B-Instruct` + LoRA `lora_qa`，通过 `server/web_api.py` 提供服务 |
+| AI 对话 | 健康检查、多轮上下文、错误降级、动态显示当前模型名 |
+| 云端模型 | 阿里云百炼 `deepseek-v4.1-flash`，经 `server/cloud_api.py` 代理（**API Key 只存服务端**） |
+| 本地模型（可选） | TRAE 训练 `Qwen2.5-0.5B-Instruct` + LoRA `lora_qa`，经 `server/web_api.py` 提供服务 |
 
 **默认账号**：`admin`　**默认密码**：`123456`
 
@@ -44,7 +44,10 @@ personal-site/
 ├── public/
 │   └── favicon.svg           图标
 ├── server/
-│   └── web_api.py            本地模型服务（FastAPI，加载 Qwen + LoRA）
+│   ├── cloud_api.py          阿里云百炼代理（零依赖，推荐使用）
+│   ├── web_api.py            本地模型服务（FastAPI，加载 Qwen + LoRA，可选）
+│   ├── mock_model.py         假模型服务，用于纯前端联调
+│   └── requirements.txt      web_api.py 所需 Python 依赖
 └── src/
     ├── main.js               Vue 应用入口 + 路由守卫
     ├── App.vue               根组件
@@ -69,36 +72,39 @@ personal-site/
 npm install
 ```
 
-### 2. 启动本地模型服务（后端）
+### 2. 启动 AI 代理服务（接入阿里云 deepseek-v4.1-flash）
 
-需要先在本机训练好模型：
+**零依赖**，只需要 Python 3（无需 pip install）。
 
-- 基础模型：`Qwen/Qwen2.5-0.5B-Instruct`
-- LoRA：由 TRAE 训练并导出的 `lora_qa` 权重目录
+先到[阿里云百炼控制台](https://bailian.console.aliyun.com/)创建 API Key，然后：
 
-安装 Python 依赖（建议新建虚拟环境）：
-
-```bash
-pip install -r server/requirements.txt
+```bat
+:: Windows
+set DASHSCOPE_API_KEY=sk-你的密钥
+python server/cloud_api.py
 ```
 
-启动服务：
-
 ```bash
-# 方式一：直接使用默认路径（LoRA 在 ./output/lora_qa）
-python server/web_api.py
-
-# 方式二：通过环境变量指定模型与 LoRA 路径、端口
-set MODEL_BASE=Qwen/Qwen2.5-0.5B-Instruct
-set LORA_DIR=D:\trae\lora_qa
-set PORT=8000
-python server/web_api.py
+# macOS / Linux
+export DASHSCOPE_API_KEY=sk-你的密钥
+python server/cloud_api.py
 ```
 
-服务默认监听 `http://127.0.0.1:8000`：
+默认配置（可用环境变量覆盖）：
 
-- `GET /health` —— 健康检查
-- `POST /chat` —— 对话，请求体 `{ "prompt": "...", "history": [], "max_new_tokens": 320, "temperature": 0.2 }`
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DASHSCOPE_API_KEY` | 无（必填） | 阿里云百炼 API Key |
+| `MODEL_NAME` | `deepseek-v4.1-flash` | 模型名 |
+| `DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI 兼容接口 |
+| `PORT` | `8000` | 监听端口 |
+
+服务监听 `http://127.0.0.1:8000`：
+
+- `GET /health` —— 健康检查，返回当前模型与是否已配置 Key
+- `POST /chat` —— 对话，请求体 `{ "prompt": "...", "history": [], "max_tokens": 512, "temperature": 0.7 }`
+
+> 🔐 **API Key 只保存在本机服务端环境变量中**，不会打包进前端，也不会提交到仓库。
 
 ### 3. 启动前端
 
@@ -108,9 +114,9 @@ npm run dev
 
 浏览器打开 `http://localhost:5173`，使用默认账号 `admin / 123456` 登录。
 
-> 开发模式下 `vite.config.js` 已将 `/api` 代理到 `http://127.0.0.1:8000`，因此前端无需处理跨域。若模型服务未启动，AI 对话框会显示「未检测到本地模型服务」。
+> 开发模式下 `vite.config.js` 已将 `/api` 代理到 `http://127.0.0.1:8000`，前端无需处理跨域。
 
-> **不想加载模型也想看对话效果？** 运行 `python server/mock_model.py` 会在 8000 端口起一个假模型服务（返回「模拟回复」），可用于纯前端联调。
+> **不想消耗额度也想看对话效果？** 运行 `python server/mock_model.py` 会在 8000 端口起一个假模型服务（返回「模拟回复」），可用于纯前端联调。
 
 ### 4. 生产构建
 
@@ -121,17 +127,15 @@ npm run preview   # 本地预览构建产物
 
 ---
 
-## 如何对接「你自己训练的模型」
+## 可选：改用本地 TRAE 训练模型
 
-1. 用 TRAE 按 `Qwen2.5-0.5B-Instruct` 微调，训练后导出 LoRA 权重到 `lora_qa` 目录。
-2. 修改 `server/web_api.py` 顶部常量，或设置 `MODEL_BASE` / `LORA_DIR` 环境变量。
-3. 运行服务，前端即可对话。
+默认走阿里云 `deepseek-v4.1-flash`。若想改回本地模型，前端契约完全一致，只需换成 `web_api.py`：
 
-目前 `web_api.py` 已具备：
-- 首次请求时按需加载模型（`ensure_model`）
-- 自动判断 LoRA 目录是否存在并加载 `PeftModel`
-- 使用 Qwen 的 `apply_chat_template` 拼装多轮对话
-- CORS 允许跨域调用
+1. 用 TRAE 按 `Qwen2.5-0.5B-Instruct` 微调，导出 LoRA 权重到 `lora_qa` 目录。
+2. `pip install -r server/requirements.txt`
+3. 设置 `MODEL_BASE` / `LORA_DIR` 后运行 `python server/web_api.py`（同样占用 8000 端口）。
+
+`web_api.py` 已具备：按需加载模型、自动挂载 LoRA、Qwen 对话模板拼装、CORS 跨域。
 
 ---
 
@@ -139,34 +143,35 @@ npm run preview   # 本地预览构建产物
 
 - 前端：Vue 3 · Vite 5 · Vue Router 4
 - 样式：原生 CSS（响应式，适配 PC / 移动端）
-- 后端模型服务：Python · FastAPI · Transformers · PEFT
+- AI 代理：Python 标准库（零依赖），对接阿里云百炼 OpenAI 兼容接口
+- 可选本地模型：FastAPI · Transformers · PEFT
 
 ---
 
 ## 验证
 
-第一版已通过以下验证（使用系统 Edge 无头浏览器）：
+已通过以下验证（系统 Edge 无头浏览器 + 生产构建产物实测）：
 
-- 登录页正常渲染并完成 `admin / 123456` 登录，登录后跳转 `/`。
-- 主页顶栏、欢迎区、AI 对话面板、4 个快捷提问按钮均正常显示。
-- 模型服务在线时，发送消息可收到 AI 回复（用 `mock_model.py` 联调验证了完整往返）。
-- 模型服务离线时，对话框显示「未检测到本地模型服务」提示，前端无 JS 报错。
+- 登录页正常渲染，`admin / 123456` 登录后跳转主页。
+- 主页顶栏、欢迎区、AI 对话面板、4 个快捷提问按钮均正常。
+- 阿里云代理链路：`/health` 显示 `已连接 · deepseek-v4.1-flash`；发送消息可收到回复（用 `mock_dashscope.py` 模拟上游验证完整转发，含 `Authorization` 与多轮上下文）。
+- 快捷提问按钮可正常触发发送。
+- 代理未启动时，对话框显示「未检测到 AI 代理服务」，前端无 JS 报错。
 - 退出登录后回到 `/login`。
 
-测试脚本见 `scripts/test/`（需安装 `playwright` 并使用系统 Edge）：
+测试脚本见 `scripts/test/`（需 `playwright` + 系统 Edge）：
 
 ```bash
-node scripts/test/verify.cjs        # 页面结构与路由验证
-node scripts/test/chat-flow.cjs     # 登录 → 发送 → 收到回复的完整流程（先起 mock 服务）
-node scripts/test/render-check.cjs  # 渲染登录页 / 主页截图
+node scripts/test/verify.cjs       # 页面结构与路由验证
+node scripts/test/prod-flow.cjs    # 生产产物：登录 → 对话 → 快捷提问
+node scripts/test/live-check.cjs   # 线上 GitHub Pages 站点验证
 ```
 
 ## 待办 / 已知限制
 
-- [ ] 登录目前为前端本地模拟，未接入后端数据库鉴权
+- [ ] 登录为前端本地模拟，未接入后端数据库鉴权
 - [ ] AI 对话为一次性请求返回，未实现流式输出（SSE）
-- [ ] 前端构建后（dist）生产部署时，建议由反向代理统一转发 `/api`
-- [ ] `server/web_api.py` 运行需要 GPU 或 CPU 均可，速度取决于本机算力
+- [ ] 线上站点依赖本机代理运行（`server/cloud_api.py`），如需纯在线可用，需把代理部署到云服务器
 - [ ] 第一版仅含上述核心功能，后续可按需扩展留言板、作品集等模块
 
 ---

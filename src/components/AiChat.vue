@@ -1,25 +1,42 @@
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { chat, checkHealth, MODEL } from '../api/model'
 
+const modelName = ref(MODEL.fallbackName)
+const provider = ref('阿里云百炼')
+
 const messages = ref([
-  { role: 'ai', text: '你好！我是本地训练的个人 AI 助手（Qwen2.5-0.5B-Instruct + LoRA）。有什么可以帮你？' }
+  { role: 'ai', text: '你好！我是这个个人网页里的 AI 助手，当前由阿里云百炼的 deepseek-v4.1-flash 提供服务。有什么可以帮你？' }
 ])
 const input = ref('')
 const busy = ref(false)
-const status = ref({ state: 'checking', text: '正在检测本地模型服务…' })
+const status = ref({ state: 'checking', text: '正在检测 AI 服务…' })
 const listEl = ref(null)
 const inputEl = ref(null)
+
+const modelLabel = computed(() => modelName.value || MODEL.fallbackName)
 
 // 健康检查
 async function ping() {
   const res = await checkHealth()
   if (res.online) {
-    status.value = { state: 'online', text: '本地模型已连接' }
+    modelName.value = res.model
+    if (res.provider === 'aliyun-dashscope') provider.value = '阿里云百炼'
+    if (res.keyConfigured === false) {
+      status.value = {
+        state: 'offline',
+        text: '代理已启动，但未配置 DASHSCOPE_API_KEY（请在启动 cloud_api.py 前设置环境变量）'
+      }
+    } else {
+      status.value = { state: 'online', text: '已连接 · ' + modelLabel.value }
+    }
   } else {
-    status.value = { state: 'offline', text: '未检测到本地模型服务 (' + MODEL.url + ')。请运行 server/web_api.py。' }
+    status.value = {
+      state: 'offline',
+      text: '未检测到 AI 代理服务 (' + MODEL.url + ')。请运行 server/cloud_api.py 并配置 DASHSCOPE_API_KEY。'
+    }
   }
-  return res.online && res
+  return res.online
 }
 
 function addMessage(role, text) {
@@ -44,16 +61,17 @@ async function send(pre = '') {
     .slice(-10)
     .map((m) => ({ role: m.role, content: m.text }))
 
-  let onlineBefore = status.value.state === 'online'
   try {
-    const res = await chat(text, { history, max_new_tokens: 320, temperature: 0.2 })
+    const res = await chat(text, { history, maxNewTokens: 512, temperature: 0.7 })
+    if (res.model) modelName.value = res.model
     addMessage('ai', (res.answer && res.answer.trim()) ? res.answer : '（模型没有返回内容）')
-    if (!onlineBefore) status.value = { state: 'online', text: '本地模型已连接' }
+    status.value = { state: 'online', text: '已连接 · ' + modelLabel.value }
   } catch (err) {
+    const msg = err && err.message ? err.message : String(err)
     const online = await ping()
     addMessage('ai', online
-      ? '连接模型时出错：' + (err && err.message ? err.message : String(err))
-      : '无法连接本地模型。请确认已运行 server/web_api.py（端口 8000），且已用 TRAE 完成 Qwen2.5-0.5B-Instruct + LoRA(lora_qa) 的训练。')
+      ? '请求失败：' + msg
+      : '无法连接 AI 服务。请在本机运行 server/cloud_api.py（端口 8000），并设置 DASHSCOPE_API_KEY。')
   } finally {
     busy.value = false
     if (inputEl.value) inputEl.value.focus()
@@ -61,6 +79,9 @@ async function send(pre = '') {
 }
 
 onMounted(ping)
+
+// 暴露给父组件（主页快捷提问按钮调用）
+defineExpose({ send })
 </script>
 
 <template>

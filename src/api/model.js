@@ -1,36 +1,43 @@
-// 本地模型服务 API 封装。
-// 模型由 TRAE 训练：Qwen2.5-0.5B-Instruct + LoRA（lora_qa）。
-// 本地启动 server/web_api.py 后监听 http://127.0.0.1:8000。
+// AI 服务 API 封装。
 //
-// 开发环境使用 vite 代理（vite.config.js）通过 /api 转发，规避跨域；
-// 生产部署（GitHub Pages 静态站）没有 /api 代理，故直接请求 127.0.0.1:8000
-//（web_api.py 已开启 CORS，允许跨域调用本机模型服务）。
+// 支持两种后端（契约一致，前端无感切换）：
+//   1) server/cloud_api.py —— 阿里云百炼 deepseek-v4.1-flash 代理（推荐/默认）
+//   2) server/web_api.py   —— 本地 TRAE 训练模型 Qwen2.5-0.5B-Instruct + LoRA
+//
+// 安全：API Key 只存在于本机服务端环境变量，前端不接触。
+// 开发环境经 vite 代理 /api 转发；生产（GitHub Pages 静态站）直连本机 127.0.0.1:8000
+// （127.0.0.1 属浏览器 loopback 信任域，HTTPS 页面亦可调用）。
 
 const IS_PROD = import.meta.env.PROD === true
-// 生产直连本地模型；开发走 vite 代理
 const BASE_URL = IS_PROD ? 'http://127.0.0.1:8000' : '/api'
 
 export const MODEL = {
-  baseHint: 'Qwen2.5-0.5B-Instruct + LoRA (lora_qa)',
-  url: 'http://127.0.0.1:8000'
+  url: 'http://127.0.0.1:8000',
+  fallbackName: 'deepseek-v4.1-flash'
 }
 
-// 健康检查：模型服务是否在线。
+// 健康检查：服务是否在线、当前用的是什么模型。
 export async function checkHealth(timeout = 4000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeout)
   try {
     const res = await fetch(BASE_URL + '/health', { signal: controller.signal })
     clearTimeout(timer)
-    if (res.ok) return { online: true, ...(await res.json().catch(() => ({})) ) }
-    return { online: false }
+    if (!res.ok) return { online: false }
+    const data = await res.json().catch(() => ({}))
+    return {
+      online: true,
+      model: data.model || MODEL.fallbackName,
+      provider: data.provider || '',
+      keyConfigured: data.key_configured !== false
+    }
   } catch {
     clearTimeout(timer)
     return { online: false }
   }
 }
 
-// 发送对话。options: { max_new_tokens, temperature }
+// 发送对话。options: { maxNewTokens, temperature, history, timeout }
 export async function chat(prompt, options = {}) {
   const controller = new AbortController()
   const timeout = options.timeout || 120000
@@ -41,8 +48,9 @@ export async function chat(prompt, options = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
-        max_new_tokens: options.max_new_tokens ?? 320,
-        temperature: options.temperature ?? 0.2,
+        max_tokens: options.maxNewTokens ?? 512,
+        max_new_tokens: options.maxNewTokens ?? 512,
+        temperature: options.temperature ?? 0.7,
         history: options.history || []
       }),
       signal: controller.signal
@@ -50,8 +58,12 @@ export async function chat(prompt, options = {}) {
     clearTimeout(timer)
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const data = await res.json()
+    if (data && data.error) {
+      throw new Error(data.error)
+    }
     return {
       answer: (data && data.answer) || '',
+      model: (data && data.model) || MODEL.fallbackName,
       raw: data
     }
   } catch (err) {

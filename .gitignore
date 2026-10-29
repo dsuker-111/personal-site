@@ -5,3 +5,10 @@ shots_*.png
 __pycache__/
 *.pyc
 output/
+*.tmpdir/
+
+# 本地密钥与运行日志，禁止提交
+.env
+.env.local
+*.out
+*.err
