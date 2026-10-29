@@ -163,6 +163,7 @@ defineExpose({ send })
     <div class="chat-models">
       <label class="model-caption" for="model-select">模型</label>
       <select id="model-select" v-model="currentModel" class="model-select" @change="onModelChange">
+        <option v-if="!currentModel" disabled value="">加载中…</option>
         <optgroup v-if="cloudModels.length" label="云端 · 任何设备可用">
           <option v-for="m in cloudModels" :key="m.id" :value="m.id">{{ m.label }}</option>
         </optgroup>
