@@ -11,6 +11,16 @@
 
 ---
 
+## v2.2.0 — 双平台部署（2026-10-29）
+
+**新增 Surge 部署通道，域名 `personal-site-ai.surge.sh`。**
+
+- 新增 `npm run deploy:surge` 脚本，一条命令发布到 Surge
+- 线上同时存在两个平台：Surge（`personal-site-ai.surge.sh`）+ GitHub Pages
+- 两个平台都包含 `/v1/` 子目录，版本隔离保持一致
+- README 补充 Surge 发布流程与凭据配置方式
+- 实测：Surge 站点在 Edge 中登录、AI 真实对话、无 JS 报错
+
 ## v2.1.0 — 直连版（2026-10-29）
 
 **任何电脑打开网址即可对话，无需本机运行任何服务。**

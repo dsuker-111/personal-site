@@ -1,6 +1,6 @@
 {
   "name": "personal-site",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "description": "个人网页：登录界面 + Vue 前端 + AI 对话框（阿里云百炼 deepseek-v4.1-flash / 可选本地 Qwen2.5-0.5B-Instruct + lora_qa）",
   "type": "module",
@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy:surge": "npx --yes surge ./dist personal-site-ai.surge.sh",
     "server": "python server/cloud_api.py",
     "server:local-model": "python server/web_api.py",
     "server:mock": "python server/mock_model.py"

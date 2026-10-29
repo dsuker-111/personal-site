@@ -1,6 +1,6 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.1.0`**（直连版）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.2.0`**（Surge 双平台部署）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
@@ -14,8 +14,8 @@
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.1.0` | [根目录](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（浏览器直连） | 🟢 维护中 |
-| v1.x | `release/v1` | `v1.0.0` | [/v1/](https://dsuker-111.github.io/personal-site/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
+| **v2.x** | `main` | `v2.2.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（浏览器直连） | 🟢 维护中 |
+| v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash
 git tag -l -n1              # 查看版本
@@ -26,10 +26,31 @@ git checkout main           # 回到最新
 
 ## 上线状态
 
-- **线上地址**：https://dsuker-111.github.io/personal-site/（GitHub Pages）
+双平台同时在线，内容一致：
+
+| 平台 | 地址 | 说明 |
+| --- | --- | --- |
+| **Surge**（推荐） | **https://personal-site-ai.surge.sh** | 手动 `npm run deploy:surge` 发布，国内访问较快 |
+| GitHub Pages | https://dsuker-111.github.io/personal-site/ | 推送 `main` 自动部署 |
+
 - **GitHub 仓库**：https://github.com/dsuker-111/personal-site
-- **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
 - **登录账号**：`admin / 123456`
+
+### 发布到 Surge
+
+```bash
+npm run build            # 生成 dist/
+npm run deploy:surge     # 发布到 personal-site-ai.surge.sh
+```
+
+首次使用需登录 Surge（`npx surge login`，账号 `1792494646@qq.com`），或在 CI 中设置环境变量：
+
+```bash
+set SURGE_LOGIN=1792494646@qq.com
+set SURGE_TOKEN=<你的 Surge token>   # 用 npx surge token 获取
+```
+
+> Surge 免费版提供 `*.surge.sh` 子域名；自定义域名需把 CNAME 指向 `na-west1.surge.sh` 并在 Surge 后台登记。
 
 > ℹ️ **当前默认走「浏览器直连阿里云」，打开网页即可对话，无需本机启动任何服务。**
 > 若改回「本机代理」模式，公网 HTTPS 页面访问 `127.0.0.1` 会被浏览器 PNA 策略拦截，
