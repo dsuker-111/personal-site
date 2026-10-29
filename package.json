@@ -1,8 +1,8 @@
 {
   "name": "personal-site",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
-  "description": "个人网页：登录 → 天气主界面 + 浮动 AI 对话框（阿里云百炼 deepseek-v4.1-flash / 可选本地 Qwen2.5-0.5B-Instruct + lora_qa）+ 资源库",
+  "description": "个人网页：登录 → 天气主界面 + 浮动 AI 对话框 + 个人信息（阿里云百炼 deepseek-v4.1-flash / 可选本地 Qwen2.5-0.5B-Instruct + lora_qa）+ 资源库",
   "type": "module",
   "scripts": {
     "dev": "vite",

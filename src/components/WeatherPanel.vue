@@ -1,12 +1,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { loadWeather, savedCity, saveCity, HOT_CITIES, DEFAULT_CITY } from '../api/weather'
+import { loadProfile, preferredCity } from '../store/profile'
+
+// 个人信息里显式设过「默认城市」就以它为准，否则沿用上次查看的城市
+loadProfile()
 
 const weather = ref(null)
 const loading = ref(false)
 const error = ref('')
-const input = ref(savedCity() || DEFAULT_CITY)
-const city = ref(savedCity() || DEFAULT_CITY)
+const initialCity = preferredCity() || savedCity() || DEFAULT_CITY
+const input = ref(initialCity)
+const city = ref(initialCity)
 
 const today = computed(() => {
   const d = new Date()

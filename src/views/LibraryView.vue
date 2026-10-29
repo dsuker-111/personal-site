@@ -1,12 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { auth } from '../store/auth'
+import { loadProfile } from '../store/profile'
 import { HAS_BACKEND } from '../api/http'
 import { listFiles, uploadFile, deleteFile, downloadFile, formatSize } from '../api/files'
-
-const router = useRouter()
-const user = ref(auth.currentUser())
+import UserMenu from '../components/UserMenu.vue'
 
 const files = ref([])
 const loading = ref(false)
@@ -118,12 +115,10 @@ async function download(f) {
   }
 }
 
-function logout() {
-  auth.logout()
-  router.replace('/login')
-}
-
-onMounted(refresh)
+onMounted(() => {
+  loadProfile()
+  refresh()
+})
 </script>
 
 <template>
@@ -135,11 +130,7 @@ onMounted(refresh)
         <router-link class="nav-link" to="/">← 返回主页</router-link>
       </div>
       <div class="topbar-right">
-        <span class="user-chip">
-          <span class="avatar">{{ user && user.nickname ? user.nickname[0] : 'U' }}</span>
-          {{ user && user.nickname }}
-        </span>
-        <button class="ghost-btn" @click="logout">退出</button>
+        <UserMenu />
       </div>
     </header>
 
@@ -298,6 +289,10 @@ onMounted(refresh)
   display: flex;
   align-items: center;
   gap: 10px;
+}
+/* 浅色顶栏里，用户菜单的文字要用深色 */
+.topbar-right :deep(.user-chip) {
+  color: var(--text-soft, #64748b);
 }
 .user-chip {
   display: flex;

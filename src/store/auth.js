@@ -54,6 +54,18 @@ export const auth = {
     }
   },
 
+  // 更新登录用户信息（改昵称等），不影响 token
+  updateUser(patch) {
+    const cur = this.currentUser() || {}
+    const next = { ...cur, ...patch }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+    return next
+  },
+
   isLoggedIn() {
     return !!this.currentUser()
   }

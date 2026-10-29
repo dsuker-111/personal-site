@@ -13,7 +13,8 @@ const OUT = process.env.OUT_DIR || '.tmpmedia'
     if (m.type() === 'error') errors.push('console: ' + m.text())
   })
 
-  await page.goto(URL, { waitUntil: 'networkidle' })
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForSelector('input[autocomplete="username"]', { timeout: 30000 })
   console.log('路由:', page.url())
 
   // 登录
