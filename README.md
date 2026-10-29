@@ -1,6 +1,6 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.10.0`**（浅色界面 · 天气主页 + 浮动 AI 对话框 + 个人档案（照片头像 / 收藏 / 设备））　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.11.0`**（本地多模型 · 浅色界面 · 天气主页 + 浮动 AI 对话框 + 个人档案）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
@@ -22,10 +22,14 @@
 | `qwen-plus` | 阿里云百炼 | 任何设备 | 通义千问均衡版 |
 | `qwen-max` | 阿里云百炼 | 任何设备 | 通义千问最强版 |
 | `qwen-long` | 阿里云百炼 | 任何设备 | 超长上下文 |
-| `Qwen2.5-0.5B + LoRA` | TRAE 本地训练 | **仅本机** | 需先启动 `server/web_api.py` |
+| `Qwen2.5-0.5B + LoRA（通用问答）` | TRAE 本地训练 | **仅本机** | 需先启动 `server/web_api.py` |
+| `Qwen2.5-0.5B + LoRA（孙悟空）` | TRAE 本地训练 | **仅本机** | 《西游记》人格，r=32 |
 
 云端模型一律经后端调用，API Key 不出服务端。本地模型由浏览器直连 `http://127.0.0.1:8000`，
 只有在运行了本地服务的那台电脑上才可用；其他设备选中后会提示「本地模型服务未启动」。
+
+本地模型可以有多个：服务端 `GET /models` 返回清单，前端下拉框自动列出。
+**一次只驻留一个模型**（CPU 内存有限），切换时先卸载旧的再加载新的，约 10 秒。
 
 ### 启动本地 LoRA 模型
 
@@ -34,6 +38,16 @@ pip install torch transformers peft fastapi uvicorn accelerate
 set LORA_DIR=./output/lora_qa          # TRAE 导出的 LoRA 权重目录
 python server/web_api.py               # 监听 http://127.0.0.1:8000
 ```
+
+### 加一个本地模型
+
+1. 用 `export_qwen_merged.py` 把 LoRA 合并成完整模型目录（服务端只加载合并后的模型，因此运行时不依赖 peft）：
+   ```bash
+   .venv\Scripts\python.exe export_qwen_merged.py --adapter E:\peft_out\lora_lora_wukong --out E:\peft_out\qwen_wukong_merged
+   ```
+2. 在**实际运行的那个 `web_api.py`** 的 `MODELS` 列表里加一项（`id` / `label` / `dir` / `adapter` / `system`；
+   本机是 `D:\WEBkf\test1\web_api.py`）。
+3. 重启服务，前端下拉会自动多出一项。
 
 本地服务地址可在 `public/config.js` 的 `window.__LOCAL_MODEL__` 修改。
 
@@ -81,7 +95,7 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.10.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 浅色界面 · 天气主页 + 浮动对话框 + 个人档案（照片头像 / 收藏 / 设备） | 🟢 维护中 |
+| **v2.x** | `main` | `v2.11.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 本地多模型（问答 / 孙悟空）· 浅色界面 · 天气主页 + 浮动对话框 + 个人档案 | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash

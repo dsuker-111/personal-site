@@ -1,12 +1,13 @@
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { chat, checkHealth, MODEL } from '../api/model'
-import { listCloudModels, probeLocal, inspectLocal, LOCAL_ID, LOCAL_META } from '../api/models'
+import { listCloudModels, listLocalModels, probeLocal, inspectLocal, LOCAL_ID, LOCAL_META, isLocalId } from '../api/models'
 import { formatSize } from '../api/files'
 
 const MODEL_KEY = 'ps_chat_model'
 
 const cloudModels = ref([])
+const localModels = ref([{ ...LOCAL_META }])
 const currentModel = ref('')
 const localOnline = ref(false)
 const localReason = ref('')
@@ -20,19 +21,18 @@ const status = ref({ state: 'checking', text: '正在检测 AI 服务…' })
 const listEl = ref(null)
 const inputEl = ref(null)
 
-const isLocal = computed(() => currentModel.value === LOCAL_ID)
+const isLocal = computed(() => isLocalId(currentModel.value))
 
 const currentMeta = computed(() => {
   const m = cloudModels.value.find((x) => x.id === currentModel.value)
   if (m) return m
+  const l = localModels.value.find((x) => x.id === currentModel.value)
+  if (l) return l
   if (isLocal.value) return LOCAL_META
   return null
 })
 
-const modelLabel = computed(() => {
-  if (isLocal.value) return LOCAL_META.label
-  return (currentMeta.value && currentMeta.value.label) || MODEL.fallbackName
-})
+const modelLabel = computed(() => (currentMeta.value && currentMeta.value.label) || MODEL.fallbackName)
 
 const needsLocalNetworkGrant = computed(() => {
   if (typeof window === 'undefined') return false
@@ -140,6 +140,7 @@ async function send(pre = '') {
 
 onMounted(async () => {
   cloudModels.value = await listCloudModels()
+  localModels.value = await listLocalModels()
 
   let stored = ''
   try {
@@ -147,7 +148,11 @@ onMounted(async () => {
   } catch {
     /* ignore */
   }
-  const valid = stored === LOCAL_ID || cloudModels.value.some((m) => m.id === stored)
+  // 老版本存的是 local:qwen-lora，统一迁移到新 id
+  if (stored === 'local:qwen-lora') stored = LOCAL_ID
+
+  const valid =
+    cloudModels.value.some((m) => m.id === stored) || localModels.value.some((m) => m.id === stored)
   if (valid) currentModel.value = stored
   else currentModel.value = cloudModels.value.length ? cloudModels.value[0].id : MODEL.fallbackName
 
@@ -169,7 +174,7 @@ async function checkLocalFiles() {
   filesError.value = ''
   filesData.value = null
   try {
-    filesData.value = await inspectLocal()
+    filesData.value = await inspectLocal(currentModel.value)
   } catch (e) {
     filesError.value = e && e.message ? e.message : String(e)
   } finally {
@@ -203,8 +208,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onFilesKey, true))
           <option v-for="m in cloudModels" :key="m.id" :value="m.id">{{ m.label }}</option>
         </optgroup>
         <optgroup label="本地 · 仅本机可用">
-          <option :value="LOCAL_ID">
-            {{ LOCAL_META.label }}{{ localOnline ? '' : '（未启动）' }}
+          <option v-for="m in localModels" :key="m.id" :value="m.id">
+            {{ m.label }}{{ localOnline ? '' : '（未启动）' }}
           </option>
         </optgroup>
       </select>
@@ -269,9 +274,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onFilesKey, true))
             </div>
 
             <template v-else-if="filesData">
+              <p v-if="filesData.model_label" class="mf-model">
+                {{ filesData.model_label }}
+              </p>
               <div class="mf-summary" :class="filesData.ready ? 'ok' : 'bad'">
                 <strong>{{ filesData.ready ? 'LoRA 文件齐全，可以加载' : 'LoRA 文件不完整' }}</strong>
-                <span>{{ filesData.model }} · {{ filesData.loaded ? '已加载到显存' : '尚未加载' }}</span>
+                <span>{{ filesData.model }} · {{ filesData.loaded ? '当前已驻留' : '尚未加载' }}</span>
               </div>
 
               <p class="mf-path">

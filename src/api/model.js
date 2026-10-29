@@ -5,7 +5,7 @@
 
 import { getDirectConfig, directChat } from './direct'
 import { request, HAS_BACKEND, API_BASE } from './http'
-import { LOCAL_ID, localBase } from './models'
+import { LOCAL_ID, localBase, isLocalId, localModelId } from './models'
 
 const IS_PROD = import.meta.env.PROD === true
 
@@ -73,9 +73,9 @@ export async function checkHealth(timeout = 8000) {
 }
 
 // 发送对话。options: { model, maxNewTokens, temperature, history, timeout }
-// model 为 local:qwen-lora 时调用本机服务，其余走云端后端。
+// model 以 local: 开头时调用本机服务，其余走云端后端。
 export async function chat(prompt, options = {}) {
-  if (options.model === LOCAL_ID) {
+  if (isLocalId(options.model)) {
     return chatLocal(prompt, options)
   }
 
@@ -134,13 +134,14 @@ async function chatLocal(prompt, options = {}) {
   if (!base) throw new Error('未配置本地模型地址（config.js 的 __LOCAL_MODEL__）')
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), options.timeout || 120000)
+  const timer = setTimeout(() => controller.abort(), options.timeout || 180000)
   try {
     const res = await fetch(base + '/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
+        model: localModelId(options.model),
         history: options.history || [],
         max_new_tokens: options.maxNewTokens ?? 320,
         temperature: options.temperature ?? 0.7
@@ -152,7 +153,7 @@ async function chatLocal(prompt, options = {}) {
     if (data && data.error) throw new Error(data.error)
     return {
       answer: (data && data.answer) || '',
-      model: 'qwen2.5-0.5b + lora_qa',
+      model: (data && data.model_label) || 'qwen2.5-0.5b + lora',
       local: true,
       raw: data
     }

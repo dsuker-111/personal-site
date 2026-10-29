@@ -1,14 +1,29 @@
-// 模型清单：云端（阿里云百炼，经后端）+ 本地（TRAE 训练的 Qwen2.5-0.5B + lora_qa）
+// 模型清单：云端（阿里云百炼，经后端）+ 本地（TRAE 训练的 Qwen2.5-0.5B + LoRA，可多个）
 import { request, HAS_BACKEND } from './http'
 
-export const LOCAL_ID = 'local:qwen-lora'
+// 前端用 local:xxx 区分「走本机服务」的模型
+export const LOCAL_PREFIX = 'local:'
 
+// 本地默认模型（服务端 /models 里的第一个）
+export const LOCAL_ID = LOCAL_PREFIX + 'qwen-lora-qa'
+
+// 本地服务没启动时的兜底项，保证下拉里始终有一项可选
 export const LOCAL_META = {
   id: LOCAL_ID,
-  label: 'Qwen2.5-0.5B + LoRA',
+  label: 'Qwen2.5-0.5B + LoRA（通用问答）',
   provider: 'TRAE 训练 · 本机',
   desc: '自训练模型，仅运行了本地服务的电脑可用',
   kind: 'local'
+}
+
+export function isLocalId(id) {
+  return String(id || '').startsWith(LOCAL_PREFIX)
+}
+
+/** local:qwen-lora-qa → qwen-lora-qa */
+export function localModelId(id) {
+  const s = String(id || '')
+  return isLocalId(s) ? s.slice(LOCAL_PREFIX.length) : s
 }
 
 export function localBase() {
@@ -26,16 +41,50 @@ export async function listCloudModels() {
   }
 }
 
-// 检查本地模型文件：LoRA 目录、权重、依赖、加载状态
-// 对应 server/web_api.py 的 GET /model/files
-export async function inspectLocal(timeout = 8000) {
+/** 本地模型清单：先问本机服务的 /models；没启动就退回内置的一项 */
+export async function listLocalModels(timeout = 3000) {
   const base = localBase()
-  if (!base) throw new Error('未配置本地模型地址（config.js 的 __LOCAL_MODEL__）')
+  const fallback = [{ ...LOCAL_META }]
+  if (!base) return fallback
 
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeout)
   try {
-    const res = await fetch(base + '/model/files', { signal: ctrl.signal })
+    const res = await fetch(base + '/models', { signal: ctrl.signal })
+    if (!res.ok) return fallback
+    const d = await res.json()
+    const list = (d.models || [])
+      .filter((m) => m && m.id)
+      .map((m) => ({
+        id: LOCAL_PREFIX + m.id,
+        label: m.label || m.id,
+        provider: 'TRAE 训练 · 本机',
+        desc: m.desc || '',
+        kind: 'local',
+        ready: m.ready !== false,
+        loaded: !!m.loaded
+      }))
+    return list.length ? list : fallback
+  } catch {
+    return fallback
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// 检查本地模型文件：LoRA 目录、权重、依赖、加载状态
+// 对应 server/web_api.py 的 GET /model/files?model=xxx
+export async function inspectLocal(modelId, timeout = 15000) {
+  const base = localBase()
+  if (!base) throw new Error('未配置本地模型地址（config.js 的 __LOCAL_MODEL__）')
+
+  const id = localModelId(modelId || LOCAL_ID)
+  const url = base + '/model/files' + (id ? '?model=' + encodeURIComponent(id) : '')
+
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeout)
+  try {
+    const res = await fetch(url, { signal: ctrl.signal })
     if (!res.ok) throw new Error('本地服务返回 HTTP ' + res.status + '（是否为新版 web_api.py？）')
     const data = await res.json()
     if (data && data.error) throw new Error(data.error)

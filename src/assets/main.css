@@ -1170,6 +1170,13 @@ button, input, textarea {
   font-size: 13px;
 }
 
+.mf-model {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .mf-summary.ok {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
