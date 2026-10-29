@@ -148,8 +148,7 @@ onMounted(async () => {
   }
   const valid = stored === LOCAL_ID || cloudModels.value.some((m) => m.id === stored)
   if (valid) currentModel.value = stored
-  else if (cloudModels.value.length) currentModel.value = cloudModels.value[0].id
-  else currentModel.value = LOCAL_ID
+  else currentModel.value = cloudModels.value.length ? cloudModels.value[0].id : MODEL.fallbackName
 
   await refreshLocal()
   await ping()

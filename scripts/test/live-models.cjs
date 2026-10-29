@@ -41,6 +41,12 @@ async function main() {
   await page.waitForTimeout(2500)
 
   console.log('2) 模型选择器')
+  // 等模型清单加载完成（首次访问后端可能冷启动）
+  for (let i = 0; i < 20; i++) {
+    const v = await page.locator('#model-select').inputValue()
+    if (v) break
+    await page.waitForTimeout(1000)
+  }
   const opts = await page.locator('#model-select option').allTextContents()
   console.log('   选项:', opts.map((s) => s.trim()).join(' / '))
   console.log('   当前:', await page.locator('#model-select').inputValue())
