@@ -16,6 +16,22 @@ const inputEl = ref(null)
 
 const modelLabel = computed(() => modelName.value || MODEL.fallbackName)
 
+// 判断是否为「公网 HTTPS 页面访问本机」场景——此时浏览器会拦截，需要用户授权本地网络访问
+const needsLocalNetworkGrant = computed(() => {
+  if (typeof window === 'undefined') return false
+  const h = window.location.hostname
+  const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '[::1]'
+  return window.location.protocol === 'https:' && !isLocal
+})
+
+const offlineHint = computed(() => {
+  if (needsLocalNetworkGrant.value) {
+    return '无法访问本机 AI 代理。若代理已在运行，请在浏览器提示「访问本地网络」时点【允许】；'
+      + '或在地址栏左侧站点设置中开启本地网络访问权限。也可改用本地方式访问本站。'
+  }
+  return '未检测到 AI 代理服务 (' + MODEL.url + ')。请运行 server/cloud_api.py 并配置 DASHSCOPE_API_KEY。'
+})
+
 // 健康检查
 async function ping() {
   const res = await checkHealth()
@@ -31,10 +47,7 @@ async function ping() {
       status.value = { state: 'online', text: '已连接 · ' + modelLabel.value }
     }
   } else {
-    status.value = {
-      state: 'offline',
-      text: '未检测到 AI 代理服务 (' + MODEL.url + ')。请运行 server/cloud_api.py 并配置 DASHSCOPE_API_KEY。'
-    }
+    status.value = { state: 'offline', text: offlineHint.value }
   }
   return res.online
 }
@@ -71,7 +84,7 @@ async function send(pre = '') {
     const online = await ping()
     addMessage('ai', online
       ? '请求失败：' + msg
-      : '无法连接 AI 服务。请在本机运行 server/cloud_api.py（端口 8000），并设置 DASHSCOPE_API_KEY。')
+      : '无法连接 AI 服务。' + offlineHint.value)
   } finally {
     busy.value = false
     if (inputEl.value) inputEl.value.focus()

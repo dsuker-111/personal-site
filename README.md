@@ -13,18 +13,18 @@
 - **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
 - **登录账号**：`admin / 123456`
 
-> ⚠️ **重要：公网 HTTPS 页面无法直接请求本机 127.0.0.1**
-> Chrome/Edge 的私有网络访问（Private Network Access）策略会拦截「公网页面 → 本机地址」的请求：
-> `Permission was denied for this request to access the loopback address space`。
-> 因此线上 GitHub Pages 页面**不能**直接调用本机代理。有三种用法：
+> ⚠️ **线上页面访问本机代理，需授权「本地网络访问」**
+> Chrome / Edge 的私有网络访问（Private Network Access）策略会拦截「公网 HTTPS 页面 → 本机地址」的请求。
+> 首次在线上站点使用 AI 时，浏览器会请求**「访问本地网络」**权限，点 **允许** 即可正常对话；
+> 若之前误点拒绝，可在地址栏左侧的站点设置里重新开启「本地网络访问」。
 >
-> | 方式 | 说明 | AI 是否可用 |
+> | 方式 | 访问地址 | AI 是否可用 |
 > | --- | --- | --- |
-> | ① 本地运行站点 | `npm run dev` 或 `npm run preview`，用 `http://localhost:5173` 访问 | ✅ 可用 |
-> | ② 把代理部署到公网 | 将 `server/cloud_api.py` 部署到云主机/函数计算，得到 HTTPS 地址 | ✅ 可用 |
-> | ③ 直接用线上 Pages | 仅 UI 演示 | ❌ 被浏览器拦截 |
+> | ① 线上 GitHub Pages（授权后） | https://dsuker-111.github.io/personal-site/ | ✅ 需点允许 |
+> | ② 本地运行 | `npm run dev` → http://localhost:5173 | ✅ 无提示 |
+> | ③ 代理部署到公网 | 改 `public/config.js` 指向 HTTPS 代理域名 | ✅ 无需授权 |
 >
-> 方式 ② 部署好后，修改 `public/config.js` 里的地址即可，无需改代码：
+> 方式 ③ 部署好后，修改 `public/config.js` 即可，无需改代码：
 > ```js
 > window.__AI_API_BASE__ = 'https://你的代理域名'
 > ```
