@@ -50,7 +50,10 @@ onBeforeUnmount(() => {
 <template>
   <div ref="root" class="user-menu">
     <button class="user-chip" :class="{ open }" :aria-expanded="open" @click="toggle">
-      <span class="avatar">{{ profile.avatar }}</span>
+      <span class="avatar">
+        <img v-if="profile.avatarUrl" :src="profile.avatarUrl" alt="" />
+        <template v-else>{{ profile.avatar }}</template>
+      </span>
       <span class="user-name">{{ profile.nickname }}</span>
       <span class="caret">▾</span>
     </button>
@@ -58,7 +61,10 @@ onBeforeUnmount(() => {
     <transition name="um-fade">
       <div v-if="open" class="user-dropdown" role="menu">
         <div class="um-head">
-          <span class="um-avatar">{{ profile.avatar }}</span>
+          <span class="um-avatar">
+            <img v-if="profile.avatarUrl" :src="profile.avatarUrl" alt="" />
+            <template v-else>{{ profile.avatar }}</template>
+          </span>
           <div class="um-id">
             <strong>{{ profile.nickname }}</strong>
             <span v-if="jobLine(profile)" class="um-role">{{ jobLine(profile) }}</span>
@@ -111,12 +117,22 @@ onBeforeUnmount(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
+  overflow: hidden;
   display: grid;
   place-items: center;
   font-size: 15px;
   line-height: 1;
   background: rgba(148, 163, 184, 0.22);
   flex: none;
+}
+
+.avatar img,
+.um-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
 }
 
 .user-name {
@@ -158,6 +174,7 @@ onBeforeUnmount(() => {
   height: 38px;
   flex: none;
   border-radius: 12px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   font-size: 20px;

@@ -7,7 +7,12 @@ import {
   profile,
   cloneProfile,
   AVATARS,
-  DEGREES
+  DEGREES,
+  SITE_ICONS,
+  DEVICE_ICONS,
+  blankSite,
+  blankDevice,
+  hostOf
 } from '../store/profile'
 import { HOT_CITIES } from '../api/weather'
 
@@ -15,6 +20,8 @@ const router = useRouter()
 const toast = ref('')
 const error = ref('')
 const skillInput = ref('')
+const avatarBusy = ref(false)
+const avatarErr = ref('')
 
 // 草稿：取消时不影响正式数据
 const draft = ref(cloneProfile(profile))
@@ -38,9 +45,83 @@ const jobLine = computed(() => {
 const filledExperiences = computed(() =>
   (draft.value.experiences || []).filter((e) => (e.company || '').trim() || (e.role || '').trim())
 )
+const filledSiteList = computed(() =>
+  (draft.value.sites || []).filter((s) => (s.name || '').trim() || (s.url || '').trim())
+)
+const filledDeviceList = computed(() => (draft.value.devices || []).filter((d) => (d.name || '').trim()))
 
 function pickAvatar(a) {
   draft.value.avatar = a
+  // 选了表情就清掉照片，避免「两个头像」打架
+  draft.value.avatarUrl = ''
+}
+
+/** 选图片 → 等比缩到 256px 以内 → JPEG data URL（约 20KB，存本地毫无压力） */
+function shrinkImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, max / Math.max(img.width, img.height))
+      const w = Math.max(1, Math.round(img.width * scale))
+      const h = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
+      ctx.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', 0.86))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('这张图片读不出来，换一张试试'))
+    }
+    img.src = url
+  })
+}
+
+async function onAvatarFile(e) {
+  const input = e.target
+  const file = input.files && input.files[0]
+  input.value = ''
+  if (!file) return
+  if (!/^image\//i.test(file.type)) {
+    avatarErr.value = '请选择图片文件（jpg / png / webp）'
+    return
+  }
+  avatarErr.value = ''
+  avatarBusy.value = true
+  try {
+    draft.value.avatarUrl = await shrinkImage(file)
+  } catch (err) {
+    avatarErr.value = err.message || '处理图片失败'
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
+function clearAvatarPhoto() {
+  draft.value.avatarUrl = ''
+  avatarErr.value = ''
+}
+
+function addSite() {
+  draft.value.sites.push(blankSite())
+}
+
+function removeSite(i) {
+  draft.value.sites.splice(i, 1)
+}
+
+function addDevice() {
+  draft.value.devices.push(blankDevice())
+}
+
+function removeDevice(i) {
+  draft.value.devices.splice(i, 1)
 }
 
 function addExperience() {
@@ -85,6 +166,7 @@ function save() {
   saveProfile({
     nickname,
     avatar: d.avatar || '🙂',
+    avatarUrl: d.avatarUrl || '',
     bio: d.bio.trim(),
     title: d.title.trim(),
     company: d.company.trim(),
@@ -102,6 +184,22 @@ function save() {
         desc: e.desc.trim()
       }))
       .filter((e) => e.company || e.role),
+    sites: (d.sites || [])
+      .map((s) => ({
+        icon: s.icon || '🔗',
+        name: s.name.trim(),
+        url: s.url.trim(),
+        desc: s.desc.trim()
+      }))
+      .filter((s) => s.name || s.url),
+    devices: (d.devices || [])
+      .map((x) => ({
+        icon: x.icon || '💻',
+        name: x.name.trim(),
+        spec: x.spec.trim(),
+        note: x.note.trim()
+      }))
+      .filter((x) => x.name),
     email,
     github: d.github.trim(),
     website: d.website.trim(),
@@ -135,57 +233,94 @@ function linkOf(v) {
     <main class="profile-main">
       <div class="pf-layout">
         <!-- 名片预览 -->
-        <aside class="pf-preview">
-          <div class="pf-avatar">{{ draft.avatar || '🙂' }}</div>
-          <h2>{{ draft.nickname || '未命名' }}</h2>
-          <p v-if="jobLine" class="pf-job">{{ jobLine }}</p>
-          <p class="pf-bio">{{ draft.bio || '这个人很懒，什么都没写。' }}</p>
+        <aside class="pf-side">
+          <article class="pf-preview">
+            <div class="pf-avatar">
+              <img v-if="draft.avatarUrl" :src="draft.avatarUrl" alt="头像" />
+              <template v-else>{{ draft.avatar || '🙂' }}</template>
+            </div>
+            <h2>{{ draft.nickname || '未命名' }}</h2>
+            <p v-if="jobLine" class="pf-job">{{ jobLine }}</p>
+            <p class="pf-bio">{{ draft.bio || '这个人很懒，什么都没写。' }}</p>
 
-          <ul class="pf-meta">
-            <li v-if="eduLine">
-              <span class="ic">🎓</span>
-              <span>{{ eduLine }}<em v-if="draft.eduPeriod"> · {{ draft.eduPeriod }}</em></span>
-            </li>
-            <li v-if="draft.location">
-              <span class="ic">📍</span><span>{{ draft.location }}</span>
-            </li>
-            <li>
-              <span class="ic">☁️</span><span>默认天气城市：{{ draft.city || '杭州' }}</span>
-            </li>
-          </ul>
+            <ul class="pf-meta">
+              <li v-if="eduLine">
+                <span class="ic">🎓</span>
+                <span>{{ eduLine }}<em v-if="draft.eduPeriod"> · {{ draft.eduPeriod }}</em></span>
+              </li>
+              <li v-if="draft.location">
+                <span class="ic">📍</span><span>{{ draft.location }}</span>
+              </li>
+              <li>
+                <span class="ic">☁️</span><span>默认天气城市：{{ draft.city || '杭州' }}</span>
+              </li>
+            </ul>
 
-          <div v-if="draft.skills.length" class="pf-skills">
-            <span v-for="(s, i) in draft.skills" :key="s" class="pf-skill">
-              {{ s }}
-              <button type="button" title="删除" @click="removeSkill(i)">×</button>
-            </span>
-          </div>
+            <div v-if="draft.skills.length" class="pf-skills">
+              <span v-for="(s, i) in draft.skills" :key="s" class="pf-skill">
+                {{ s }}
+                <button type="button" title="删除" @click="removeSkill(i)">×</button>
+              </span>
+            </div>
 
-          <div v-if="filledExperiences.length" class="pf-timeline">
-            <p class="pf-timeline-title">职业经历</p>
-            <div v-for="(e, i) in filledExperiences" :key="i" class="pf-tl-item">
-              <span class="dot"></span>
-              <div>
-                <strong>{{ e.role || e.company }}</strong>
-                <div class="pf-tl-sub">
-                  {{ [e.company, e.period].filter(Boolean).join(' · ') }}
+            <div v-if="filledExperiences.length" class="pf-timeline">
+              <p class="pf-timeline-title">职业经历</p>
+              <div v-for="(e, i) in filledExperiences" :key="i" class="pf-tl-item">
+                <span class="dot"></span>
+                <div>
+                  <strong>{{ e.role || e.company }}</strong>
+                  <div class="pf-tl-sub">
+                    {{ [e.company, e.period].filter(Boolean).join(' · ') }}
+                  </div>
+                  <p v-if="e.desc" class="pf-tl-desc">{{ e.desc }}</p>
                 </div>
-                <p v-if="e.desc" class="pf-tl-desc">{{ e.desc }}</p>
               </div>
             </div>
-          </div>
 
-          <ul v-if="draft.email || draft.github || draft.website" class="pf-links">
-            <li v-if="draft.email">
-              <a :href="'mailto:' + draft.email">✉️ {{ draft.email }}</a>
-            </li>
-            <li v-if="draft.github">
-              <a :href="linkOf(draft.github)" target="_blank" rel="noreferrer">🐙 {{ draft.github }}</a>
-            </li>
-            <li v-if="draft.website">
-              <a :href="linkOf(draft.website)" target="_blank" rel="noreferrer">🔗 {{ draft.website }}</a>
-            </li>
-          </ul>
+            <ul v-if="draft.email || draft.github || draft.website" class="pf-links">
+              <li v-if="draft.email">
+                <a :href="'mailto:' + draft.email">✉️ {{ draft.email }}</a>
+              </li>
+              <li v-if="draft.github">
+                <a :href="linkOf(draft.github)" target="_blank" rel="noreferrer">🐙 {{ draft.github }}</a>
+              </li>
+              <li v-if="draft.website">
+                <a :href="linkOf(draft.website)" target="_blank" rel="noreferrer">🔗 {{ draft.website }}</a>
+              </li>
+            </ul>
+          </article>
+
+          <!-- 网站收藏 -->
+          <article v-if="filledSiteList.length" class="pf-side-card">
+            <p class="pf-side-title"><span>🔖</span>网站收藏</p>
+            <ul class="pf-sites">
+              <li v-for="(s, i) in filledSiteList" :key="'v' + i">
+                <a :href="linkOf(s.url)" target="_blank" rel="noreferrer">
+                  <span class="pf-site-ic">{{ s.icon || '🔗' }}</span>
+                  <span class="pf-site-body">
+                    <strong>{{ s.name || hostOf(s.url) }}</strong>
+                    <em>{{ hostOf(s.url) }}</em>
+                    <small v-if="s.desc">{{ s.desc }}</small>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </article>
+
+          <!-- 设备展示 -->
+          <article v-if="filledDeviceList.length" class="pf-side-card">
+            <p class="pf-side-title"><span>🖥️</span>我的设备</p>
+            <ul class="pf-devices">
+              <li v-for="(x, i) in filledDeviceList" :key="'d' + i">
+                <span class="pf-device-ic">{{ x.icon || '💻' }}</span>
+                <span class="pf-device-body">
+                  <strong>{{ x.name }}</strong>
+                  <em v-if="x.spec">{{ x.spec }}</em>
+                  <small v-if="x.note">{{ x.note }}</small>
+                </span>
+              </li>
+            </ul>
+          </article>
         </aside>
 
         <!-- 表单 -->
@@ -205,6 +340,25 @@ function linkOf(v) {
                   @click="pickAvatar(a)"
                 >{{ a }}</button>
               </div>
+
+              <div class="pf-avatar-up">
+                <label class="pf-btn upload">
+                  {{ avatarBusy ? '处理中…' : draft.avatarUrl ? '换一张照片' : '📷 上传照片' }}
+                  <input type="file" accept="image/*" :disabled="avatarBusy" @change="onAvatarFile" />
+                </label>
+                <button
+                  v-if="draft.avatarUrl"
+                  type="button"
+                  class="pf-btn ghost"
+                  @click="clearAvatarPhoto"
+                >
+                  改回表情
+                </button>
+                <span class="pf-avatar-tip">
+                  {{ draft.avatarUrl ? '已用照片做头像（自动压缩到 256px）' : '也可以传张照片，会存进本机浏览器' }}
+                </span>
+              </div>
+              <p v-if="avatarErr" class="pf-error">{{ avatarErr }}</p>
             </div>
 
             <div class="pf-row">
@@ -313,6 +467,74 @@ function linkOf(v) {
             </div>
             <p v-else class="pf-empty">还没有技能标签</p>
 
+            <h3 class="pf-section">
+              🔖 网站收藏
+              <button class="pf-add" type="button" @click="addSite">＋ 添加一条</button>
+            </h3>
+            <p v-if="!draft.sites.length" class="pf-empty">
+              还没有收藏，点右上「＋ 添加一条」记下常去的站点、博客、工具。
+            </p>
+            <div v-for="(s, i) in draft.sites" :key="'site' + i" class="pf-exp">
+              <div class="pf-exp-head">
+                <span>站点 {{ i + 1 }}</span>
+                <button type="button" class="pf-del" @click="removeSite(i)">删除</button>
+              </div>
+              <div class="pf-row pf-row-ic">
+                <label class="pf-field pf-ic">
+                  <span class="pf-label">图标</span>
+                  <select v-model="s.icon">
+                    <option v-for="ic in SITE_ICONS" :key="ic" :value="ic">{{ ic }}</option>
+                  </select>
+                </label>
+                <label class="pf-field">
+                  <span class="pf-label">名称</span>
+                  <input v-model="s.name" type="text" maxlength="20" placeholder="如 GitHub" />
+                </label>
+              </div>
+              <label class="pf-field">
+                <span class="pf-label">链接</span>
+                <input v-model="s.url" type="text" maxlength="120" placeholder="https://github.com/yourname" />
+              </label>
+              <label class="pf-field">
+                <span class="pf-label">一句话说明</span>
+                <input v-model="s.desc" type="text" maxlength="40" placeholder="可留空，如 我写代码的地方" />
+              </label>
+            </div>
+
+            <h3 class="pf-section">
+              🖥️ 设备展示
+              <button class="pf-add" type="button" @click="addDevice">＋ 添加一件</button>
+            </h3>
+            <p v-if="!draft.devices.length" class="pf-empty">
+              还没有设备，点右上「＋ 添加一件」写写自己常用的电脑、外设。
+            </p>
+            <div v-for="(x, i) in draft.devices" :key="'dev' + i" class="pf-exp">
+              <div class="pf-exp-head">
+                <span>设备 {{ i + 1 }}</span>
+                <button type="button" class="pf-del" @click="removeDevice(i)">删除</button>
+              </div>
+              <div class="pf-row pf-row-ic">
+                <label class="pf-field pf-ic">
+                  <span class="pf-label">图标</span>
+                  <select v-model="x.icon">
+                    <option v-for="ic in DEVICE_ICONS" :key="ic" :value="ic">{{ ic }}</option>
+                  </select>
+                </label>
+                <label class="pf-field">
+                  <span class="pf-label">设备名</span>
+                  <input v-model="x.name" type="text" maxlength="24" placeholder="如 主力笔记本" />
+                </label>
+              </div>
+              <label class="pf-field">
+                <span class="pf-label">型号 / 配置</span>
+                <input v-model="x.spec" type="text" maxlength="48" placeholder="如 R7-7840H · 32G · 1T SSD" />
+              </label>
+              <label class="pf-field">
+                <span class="pf-label">备注</span>
+                <input v-model="x.note" type="text" maxlength="40" placeholder="可留空，如 日常开发主力" />
+              </label>
+            </div>
+
             <h3 class="pf-section">联系方式</h3>
             <div class="pf-row">
               <label class="pf-field">
@@ -349,7 +571,7 @@ function linkOf(v) {
             </div>
 
             <p class="pf-hint">
-              修改保存在本机浏览器，保存后立刻更新顶栏、主页问候语与默认天气城市。
+              修改保存在本机浏览器（含上传的头像照片），保存后立刻更新顶栏、主页问候语与默认天气城市。
             </p>
           </form>
         </section>
@@ -432,9 +654,22 @@ function linkOf(v) {
 }
 
 /* ---------- 名片预览 ---------- */
-.pf-preview {
+/* ---------- 左栏：名片 + 收藏 + 设备 ---------- */
+.pf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* 跟着表单滚动时保持可见；内容太高则自己滚 */
   position: sticky;
   top: 84px;
+  align-self: start;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+
+.pf-preview {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -443,11 +678,167 @@ function linkOf(v) {
   text-align: center;
 }
 
+.pf-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+/* ---------- 上传头像 ---------- */
+.pf-avatar-up {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pf-btn.upload {
+  position: relative;
+  overflow: hidden;
+  color: var(--primary);
+  border-color: rgba(79, 70, 229, 0.35);
+  background: #eef2ff;
+}
+
+.pf-btn.upload:hover:not(:disabled) {
+  background: #e0e7ff;
+}
+
+.pf-btn.upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pf-avatar-tip {
+  font-size: 11.5px;
+  color: var(--text-soft);
+}
+
+/* ---------- 收藏 / 设备 展示卡 ---------- */
+.pf-side-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.1);
+}
+
+.pf-side-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pf-sites,
+.pf-devices {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pf-sites li a {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background .18s;
+}
+
+.pf-sites li a:hover {
+  background: #f5f7fb;
+}
+
+.pf-site-ic,
+.pf-device-ic {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #eef2ff;
+  font-size: 15px;
+}
+
+.pf-sites li,
+.pf-devices li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pf-devices li {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fbfcfe;
+  border: 1px solid var(--border);
+}
+
+.pf-site-body,
+.pf-device-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pf-site-body strong,
+.pf-device-body strong {
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-site-body em,
+.pf-device-body em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-site-body small,
+.pf-device-body small {
+  font-size: 11px;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+/* 图标下拉窄一点（选择器要比 .pf-row 更具体，否则被后面的 1fr 1fr 覆盖） */
+.pf-row.pf-row-ic {
+  grid-template-columns: 84px 1fr;
+}
+
+.pf-ic select {
+  text-align: center;
+  font-size: 16px;
+}
+
 .pf-avatar {
   width: 82px;
   height: 82px;
   margin: 2px auto 12px;
   border-radius: 24px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   font-size: 40px;
@@ -896,8 +1287,11 @@ function linkOf(v) {
     grid-template-columns: 1fr;
   }
 
-  .pf-preview {
+  .pf-side {
     position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
 }
 

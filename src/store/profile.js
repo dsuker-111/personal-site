@@ -10,10 +10,22 @@ export const AVATARS = ['🙂', '😎', '🐱', '🐼', '🦊', '🐳', '🍀', 
 
 export const DEGREES = ['专科', '本科', '硕士', '博士', '其他']
 
+// 网站收藏 / 设备展示的图标（下拉里选，避免让用户自己敲 emoji）
+export const SITE_ICONS = ['🔗', '🌐', '📚', '🎨', '💻', '🎵', '📷', '🛠️', '🎮', '📝', '🛒', '🎓', '⚙️', '📦']
+export const DEVICE_ICONS = ['💻', '🖥️', '📱', '⌨️', '🖱️', '🎧', '📷', '🎮', '🖨️', '💾', '🔋', '⌚', '📺', '🎤']
+
 export const DEFAULT_CITY = '杭州'
 
 function blankExperience() {
   return { company: '', role: '', period: '', desc: '' }
+}
+
+export function blankSite() {
+  return { icon: '🔗', name: '', url: '', desc: '' }
+}
+
+export function blankDevice() {
+  return { icon: '💻', name: '', spec: '', note: '' }
 }
 
 function defaults(username, nickname) {
@@ -21,6 +33,8 @@ function defaults(username, nickname) {
     username: username || 'admin',
     nickname: nickname || '管理员',
     avatar: '🙂',
+    // 上传的照片头像（压缩后的 data URL）。有值时优先于 emoji 显示。
+    avatarUrl: '',
     title: '前端开发工程师',
     company: '',
     location: '',
@@ -35,6 +49,10 @@ function defaults(username, nickname) {
 
     // 技能标签
     skills: [],
+
+    // 网站收藏 / 设备展示
+    sites: [],
+    devices: [],
 
     // 联系方式
     email: '',
@@ -86,7 +104,11 @@ function migrate(base, saved) {
   }
   if (!Array.isArray(out.skills)) out.skills = []
   if (!Array.isArray(out.experiences)) out.experiences = []
+  if (!Array.isArray(out.sites)) out.sites = []
+  if (!Array.isArray(out.devices)) out.devices = []
   out.experiences = out.experiences.map((e) => ({ ...blankExperience(), ...(e || {}) }))
+  out.sites = out.sites.map((s) => ({ ...blankSite(), ...(s || {}) }))
+  out.devices = out.devices.map((d) => ({ ...blankDevice(), ...(d || {}) }))
   return out
 }
 
@@ -117,4 +139,25 @@ export function jobLine(p = profile) {
 /** 学历一行：学校 · 专业 · 学历 */
 export function eduLine(p = profile) {
   return [p.school, p.major, p.degree].filter(Boolean).join(' · ')
+}
+
+/** 只保留真正填了内容的收藏 / 设备，用于名片展示 */
+export function filledSites(p = profile) {
+  return (p.sites || []).filter((s) => (s.name || '').trim() || (s.url || '').trim())
+}
+
+export function filledDevices(p = profile) {
+  return (p.devices || []).filter((d) => (d.name || '').trim())
+}
+
+/** 从链接里取域名，用于收藏卡片副标题 */
+export function hostOf(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  try {
+    const u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw)
+    return u.hostname.replace(/^www\./i, '')
+  } catch {
+    return raw.replace(/^https?:\/\//i, '').split('/')[0]
+  }
 }
