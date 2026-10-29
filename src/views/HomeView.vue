@@ -7,6 +7,8 @@ import ChatWidget from '../components/ChatWidget.vue'
 
 const router = useRouter()
 const user = ref(auth.currentUser())
+// 构建时由 vite.config.js 注入（来源：仓库根目录 VERSION）
+const version = __APP_VERSION__
 
 function logout() {
   auth.logout()
@@ -45,7 +47,7 @@ function logout() {
     </main>
 
     <footer class="footer">
-      QQ 软件开发工程实践 · 个人网页 V1.0
+      QQ 软件开发工程实践 · 个人网页 v{{ version }} · 天气 + AI 助手
     </footer>
 
     <!-- AI 对话：浮动对话框 -->
