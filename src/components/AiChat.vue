@@ -1,7 +1,8 @@
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { chat, checkHealth, MODEL } from '../api/model'
-import { listCloudModels, probeLocal, LOCAL_ID, LOCAL_META } from '../api/models'
+import { listCloudModels, probeLocal, inspectLocal, LOCAL_ID, LOCAL_META } from '../api/models'
+import { formatSize } from '../api/files'
 
 const MODEL_KEY = 'ps_chat_model'
 
@@ -155,6 +156,41 @@ onMounted(async () => {
 })
 
 defineExpose({ send })
+
+// ---------- 本地模型文件检查 ----------
+const filesOpen = ref(false)
+const filesLoading = ref(false)
+const filesError = ref('')
+const filesData = ref(null)
+
+async function checkLocalFiles() {
+  filesOpen.value = true
+  filesLoading.value = true
+  filesError.value = ''
+  filesData.value = null
+  try {
+    filesData.value = await inspectLocal()
+  } catch (e) {
+    filesError.value = e && e.message ? e.message : String(e)
+  } finally {
+    filesLoading.value = false
+  }
+}
+
+function closeFiles() {
+  filesOpen.value = false
+}
+
+// 弹窗打开时 Esc 只关弹窗，不要顺带把外层对话框关掉
+function onFilesKey(e) {
+  if (e.key === 'Escape' && filesOpen.value) {
+    e.stopPropagation()
+    closeFiles()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onFilesKey, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onFilesKey, true))
 </script>
 
 <template>
@@ -176,6 +212,15 @@ defineExpose({ send })
       <span v-if="isLocal" class="model-badge" :class="localOnline ? 'on' : 'off'">
         {{ localOnline ? '本机在线' : '本机离线' }}
       </span>
+      <button
+        v-if="isLocal"
+        class="model-check-btn"
+        type="button"
+        title="检查本机模型文件（LoRA 目录 / 权重 / 依赖）"
+        @click="checkLocalFiles"
+      >
+        🔍 检查模型文件
+      </button>
     </div>
 
     <div class="chat-status" :data-state="status.state">{{ status.text }}</div>
@@ -202,5 +247,69 @@ defineExpose({ send })
         <span v-else>发送</span>
       </button>
     </form>
+
+    <!-- 本地模型文件检查（弹窗挂到 body，避免被对话框裁剪） -->
+    <Teleport to="body">
+      <div v-if="filesOpen" class="mf-mask" @click.self="closeFiles">
+        <div class="mf-modal" role="dialog" aria-label="本地模型文件检查">
+          <header class="mf-head">
+            <span>🔍 本地模型文件检查</span>
+            <button class="mf-close" title="关闭（Esc）" @click="closeFiles">✕</button>
+          </header>
+
+          <div class="mf-body">
+            <p v-if="filesLoading" class="mf-loading">正在检查本机模型文件…</p>
+
+            <div v-else-if="filesError" class="mf-error">
+              <p class="mf-error-title">检查失败</p>
+              <p>{{ filesError }}</p>
+              <p class="mf-error-tip">
+                本地模型只在运行了 <code>python server/web_api.py</code> 的那台电脑上可用。
+              </p>
+            </div>
+
+            <template v-else-if="filesData">
+              <div class="mf-summary" :class="filesData.ready ? 'ok' : 'bad'">
+                <strong>{{ filesData.ready ? 'LoRA 文件齐全，可以加载' : 'LoRA 文件不完整' }}</strong>
+                <span>{{ filesData.model }} · {{ filesData.loaded ? '已加载到显存' : '尚未加载' }}</span>
+              </div>
+
+              <p class="mf-path">
+                LoRA 目录：<code>{{ filesData.lora_dir }}</code>
+              </p>
+
+              <ul class="mf-checks">
+                <li v-for="c in filesData.checks" :key="c.key" :class="c.ok ? 'on' : 'off'">
+                  <span class="mf-mark">{{ c.ok ? '✓' : '✕' }}</span>
+                  <span class="mf-label">{{ c.label }}</span>
+                  <span class="mf-detail">{{ c.detail }}</span>
+                </li>
+              </ul>
+
+              <div v-if="filesData.files && filesData.files.length" class="mf-files">
+                <p class="mf-files-title">
+                  目录内文件 {{ filesData.files.length }} 个 · 共 {{ formatSize(filesData.total_size) }}
+                </p>
+                <table>
+                  <tr v-for="f in filesData.files" :key="f.name">
+                    <td class="nm">{{ f.name }}</td>
+                    <td class="sz">{{ f.dir ? '目录' : formatSize(f.size) }}</td>
+                    <td class="tm">{{ f.mtime }}</td>
+                  </tr>
+                </table>
+              </div>
+              <p v-else class="mf-empty">
+                目录不存在或是空的 —— 检查 <code>LORA_DIR</code> 环境变量是否指向 TRAE 导出的 lora_qa 目录。
+              </p>
+            </template>
+          </div>
+
+          <footer class="mf-foot">
+            <button class="mf-btn" :disabled="filesLoading" @click="checkLocalFiles">重新检查</button>
+            <button class="mf-btn primary" @click="closeFiles">关闭</button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

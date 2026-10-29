@@ -11,9 +11,10 @@
 用法：
     python server/web_api.py
 
-默认监听 http://127.0.0.1:8000，提供两个接口：
-    GET  /health  健康检查
-    POST /chat    对话
+默认监听 http://127.0.0.1:8000，提供三个接口：
+    GET  /health       健康检查
+    GET  /model/files  自检：LoRA 目录 / 权重文件 / 依赖 / 加载状态（前端「检查模型文件」）
+    POST /chat         对话
 
 通过环境变量可覆盖默认值：
     MODEL_BASE   基础模型路径或名称，默认 "Qwen/Qwen2.5-0.5B-Instruct"
@@ -23,6 +24,7 @@
 
 import os
 import threading
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -105,6 +107,87 @@ async def allow_private_network(request: Request, call_next):
 @app.get("/health")
 async def health():
     return {"status": "ok", "model": MODEL_BASE, "lora": os.path.isdir(LORA_DIR)}
+
+
+def _scan_dir(path, limit=40):
+    """列出目录里的文件（名称 / 大小 / 修改时间），用于「检查模型文件」。"""
+    items = []
+    try:
+        names = sorted(os.listdir(path))
+    except OSError:
+        return items
+    for name in names[:limit]:
+        full = os.path.join(path, name)
+        try:
+            st = os.stat(full)
+        except OSError:
+            continue
+        items.append({
+            "name": name,
+            "dir": os.path.isdir(full),
+            "size": None if os.path.isdir(full) else st.st_size,
+            "mtime": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M"),
+        })
+    return items
+
+
+def _pkg_version(name):
+    try:
+        import importlib.metadata as md
+
+        return md.version(name)
+    except Exception:
+        return ""
+
+
+@app.get("/model/files")
+async def model_files():
+    """自检：LoRA 目录、权重文件、依赖、加载状态。前端「检查模型文件」按钮调用。"""
+    lora_abs = os.path.abspath(LORA_DIR)
+    lora_exists = os.path.isdir(lora_abs)
+    files = _scan_dir(lora_abs) if lora_exists else []
+    names = {f["name"] for f in files}
+
+    adapter_cfg = "adapter_config.json" in names
+    weight = next((n for n in sorted(names) if n.startswith("adapter_model.")), "")
+    adapter_weights = bool(weight)
+    base_is_dir = os.path.isdir(MODEL_BASE)
+
+    peft_ver = _pkg_version("peft")
+    tf_ver = _pkg_version("transformers")
+    loaded = _model is not None
+
+    checks = [
+        {"key": "service", "label": "本地服务在线", "ok": True,
+         "detail": "http://127.0.0.1:%d" % PORT},
+        {"key": "lora_dir", "label": "LoRA 目录存在", "ok": lora_exists, "detail": lora_abs},
+        {"key": "adapter_config", "label": "adapter_config.json", "ok": adapter_cfg,
+         "detail": "已找到" if adapter_cfg else "缺失：peft 读不到 LoRA 配置"},
+        {"key": "adapter_weights", "label": "LoRA 权重文件", "ok": adapter_weights,
+         "detail": weight or "缺失：需要 adapter_model.safetensors 或 adapter_model.bin"},
+        {"key": "base_model", "label": "基础模型", "ok": True,
+         "detail": MODEL_BASE + ("（本地目录）" if base_is_dir else "（HuggingFace 远程）")},
+        {"key": "peft", "label": "peft 依赖", "ok": bool(peft_ver),
+         "detail": peft_ver or "未安装：pip install peft"},
+        {"key": "transformers", "label": "transformers 依赖", "ok": bool(tf_ver),
+         "detail": tf_ver or "未安装：pip install transformers"},
+        {"key": "loaded", "label": "模型已加载", "ok": loaded,
+         "detail": "已加载到显存" if loaded else "尚未加载（第一次对话时才加载）"},
+    ]
+
+    ready = lora_exists and adapter_cfg and adapter_weights
+    return {
+        "ok": True,
+        "service": "local-qwen-lora",
+        "model": MODEL_BASE,
+        "lora_dir": lora_abs,
+        "lora_exists": lora_exists,
+        "ready": ready,
+        "loaded": loaded,
+        "files": files,
+        "total_size": sum(f["size"] or 0 for f in files),
+        "checks": checks,
+    }
 
 
 @app.post("/chat")

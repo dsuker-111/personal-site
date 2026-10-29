@@ -26,6 +26,33 @@ export async function listCloudModels() {
   }
 }
 
+// 检查本地模型文件：LoRA 目录、权重、依赖、加载状态
+// 对应 server/web_api.py 的 GET /model/files
+export async function inspectLocal(timeout = 8000) {
+  const base = localBase()
+  if (!base) throw new Error('未配置本地模型地址（config.js 的 __LOCAL_MODEL__）')
+
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeout)
+  try {
+    const res = await fetch(base + '/model/files', { signal: ctrl.signal })
+    if (!res.ok) throw new Error('本地服务返回 HTTP ' + res.status + '（是否为新版 web_api.py？）')
+    const data = await res.json()
+    if (data && data.error) throw new Error(data.error)
+    return data
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('连接本地服务超时：' + base)
+    if (e instanceof TypeError) {
+      throw new Error(
+        '无法连接本地服务：请先在电脑上运行 python server/web_api.py；若已在运行，请在浏览器提示「访问本地网络」时点【允许】'
+      )
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // 探测本机模型服务是否在运行（server/web_api.py）
 export async function probeLocal(timeout = 3000) {
   const base = localBase()

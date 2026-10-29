@@ -1,6 +1,6 @@
 # 个人网页 · AI 助手（Personal Site）
 
-**当前版本：`v2.6.0`**（天气主页 + 浮动 AI 对话框 + 个人信息）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+**当前版本：`v2.7.0`**（天气主页 + 浮动 AI 对话框 + 个人信息 + 本地模型自检）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
 
 基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
@@ -35,6 +35,23 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 
 本地服务地址可在 `public/config.js` 的 `window.__LOCAL_MODEL__` 修改。
 
+### 检查模型文件
+
+选中本地模型后，模型下拉框旁边会出现 **🔍 检查模型文件** 按钮，点开是一个自检弹窗：
+
+| 检查项 | 含义 |
+| --- | --- |
+| 本地服务在线 | `http://127.0.0.1:8000` 能否连上 |
+| LoRA 目录存在 | `LORA_DIR` 指向的目录（显示绝对路径） |
+| `adapter_config.json` | peft 读取 LoRA 配置必需 |
+| LoRA 权重文件 | `adapter_model.safetensors` / `.bin` |
+| 基础模型 | `MODEL_BASE` 是本地目录还是 HuggingFace 远程 |
+| peft / transformers 依赖 | 是否装了、版本号 |
+| 模型已加载 | 是否已进显存（第一次对话才加载，之前显示未加载是正常的） |
+
+弹窗还会列出目录内每个文件的大小与修改时间，方便确认是不是 TRAE 导出的那份权重。
+对应接口是 `GET /model/files`（`server/web_api.py`），服务没启动时弹窗会直接告诉你去运行它。
+
 > 首次从公网页面访问本机地址时，浏览器可能弹出「访问本地网络」授权，需要点【允许】。
 > 服务端已返回 `Access-Control-Allow-Private-Network: true`，否则会被 PNA 策略拦截。
 
@@ -62,7 +79,7 @@ python server/web_api.py               # 监听 http://127.0.0.1:8000
 
 | 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| **v2.x** | `main` | `v2.6.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 天气主页 + 浮动对话框 + 个人信息（云端多模型 + 本地 LoRA） | 🟢 维护中 |
+| **v2.x** | `main` | `v2.7.0` | [Surge](https://personal-site-ai.surge.sh/) · [Pages](https://dsuker-111.github.io/personal-site/) | 天气主页 + 浮动对话框 + 个人信息 + 本地模型自检 | 🟢 维护中 |
 | v1.x | `release/v1` | `v1.0.0` | [/v1/](https://personal-site-ai.surge.sh/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
 
 ```bash
@@ -146,6 +163,7 @@ node server-fc/test-api.mjs # 接口自测
 | AI 对话 | 健康检查、多轮上下文、错误降级、动态显示当前模型名 |
 | 云端模型 | 阿里云百炼 `deepseek-v4.1-flash` 等 4 个模型，经后端调用，Key 不出服务端 |
 | 本地模型（可选） | TRAE 训练 `Qwen2.5-0.5B-Instruct` + LoRA `lora_qa`，经 `server/web_api.py` 提供服务 |
+| 本地模型自检 | 模型框旁「🔍 检查模型文件」：目录/权重/依赖/加载状态逐项打勾，失败给出具体原因 |
 
 **默认账号**：`admin`　**默认密码**：`123456`
 
