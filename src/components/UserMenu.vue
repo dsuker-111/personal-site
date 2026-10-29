@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth } from '../store/auth'
-import { profile } from '../store/profile'
+import { profile, jobLine } from '../store/profile'
 
 const router = useRouter()
 const open = ref(false)
@@ -61,6 +61,7 @@ onBeforeUnmount(() => {
           <span class="um-avatar">{{ profile.avatar }}</span>
           <div class="um-id">
             <strong>{{ profile.nickname }}</strong>
+            <span v-if="jobLine(profile)" class="um-role">{{ jobLine(profile) }}</span>
             <span>{{ profile.bio }}</span>
           </div>
         </div>
@@ -172,6 +173,14 @@ onBeforeUnmount(() => {
 
 .um-id strong {
   font-size: 14px;
+}
+
+.um-role {
+  font-size: 11.5px;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .um-id span {
