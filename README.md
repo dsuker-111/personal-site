@@ -1,10 +1,28 @@
 # 个人网页 · AI 助手（Personal Site）
 
-基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页第一版：
+**当前版本：`v2.1.0`**（直连版）　·　[版本历史](CHANGELOG.md)　·　[GitHub 仓库](https://github.com/dsuker-111/personal-site)
+
+基于 **需求**（《QQ 软件开发工程实践》腾讯会议记录）开发的个人网页：
 
 - **登录界面**：进入首页前需要登录，登录成功后跳转到主页面。
 - **Vue 3 前端**：登录后进入 Vue(3) + Vite 单页应用主界面。
 - **AI 对话框**：内置 AI 对话面板，接入 **阿里云百炼 `deepseek-v4.1-flash`**（同时保留本地 TRAE 训练模型 Qwen2.5-0.5B-Instruct + LoRA 的接入能力）。
+
+## 版本区分
+
+大版本用 **Git 分支 + 线上目录** 双重隔离，互不影响。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
+
+| 大版本 | Git 分支 | Git tag | 线上地址 | AI 模型 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| **v2.x** | `main` | `v2.1.0` | [根目录](https://dsuker-111.github.io/personal-site/) | 阿里云 `deepseek-v4.1-flash`（浏览器直连） | 🟢 维护中 |
+| v1.x | `release/v1` | `v1.0.0` | [/v1/](https://dsuker-111.github.io/personal-site/v1/) | 本地 `Qwen2.5-0.5B-Instruct` + `lora_qa` | 🔒 冻结 |
+
+```bash
+git tag -l -n1              # 查看版本
+git checkout v1.0.0         # 查看旧版本
+git checkout release/v1     # 切到 v1 维护分支
+git checkout main           # 回到最新
+```
 
 ## 上线状态
 
@@ -13,21 +31,9 @@
 - **部署方式**：`.github/workflows/deploy.yml` —— 推送 `main` 时自动构建并发布到 GitHub Pages，无需手动操作。
 - **登录账号**：`admin / 123456`
 
-> ⚠️ **线上页面访问本机代理，需授权「本地网络访问」**
-> Chrome / Edge 的私有网络访问（Private Network Access）策略会拦截「公网 HTTPS 页面 → 本机地址」的请求。
-> 首次在线上站点使用 AI 时，浏览器会请求**「访问本地网络」**权限，点 **允许** 即可正常对话；
-> 若之前误点拒绝，可在地址栏左侧的站点设置里重新开启「本地网络访问」。
->
-> | 方式 | 访问地址 | AI 是否可用 |
-> | --- | --- | --- |
-> | ① 线上 GitHub Pages（授权后） | https://dsuker-111.github.io/personal-site/ | ✅ 需点允许 |
-> | ② 本地运行 | `npm run dev` → http://localhost:5173 | ✅ 无提示 |
-> | ③ 代理部署到公网 | 改 `public/config.js` 指向 HTTPS 代理域名 | ✅ 无需授权 |
->
-> 方式 ③ 部署好后，修改 `public/config.js` 即可，无需改代码：
-> ```js
-> window.__AI_API_BASE__ = 'https://你的代理域名'
-> ```
+> ℹ️ **当前默认走「浏览器直连阿里云」，打开网页即可对话，无需本机启动任何服务。**
+> 若改回「本机代理」模式，公网 HTTPS 页面访问 `127.0.0.1` 会被浏览器 PNA 策略拦截，
+> 需在弹窗里点【允许本地网络访问】。三种模式的配置见下方「快速开始 → 2. 配置 AI 模型」。
 
 ---
 

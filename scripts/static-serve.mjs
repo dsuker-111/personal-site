@@ -19,7 +19,8 @@ const types = {
 const server = createServer(async (req, res) => {
   const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
   let rel = urlPath.replace(/^\/+/, "");
-  if (rel === "") rel = "index.html";
+  // 目录路径（如 v1/）补上 index.html，否则会被当成目录而错误回退到根页面
+  if (rel === "" || rel.endsWith("/")) rel += "index.html";
 
   let file = resolve(root, rel);
   // 越界保护
@@ -29,10 +30,13 @@ const server = createServer(async (req, res) => {
 
   try {
     const info = await stat(file);
-    if (!info.isFile()) throw new Error("not file");
+    if (info.isDirectory()) file = join(file, "index.html");
   } catch {
-    // SPA 回退
-    file = join(root, "index.html");
+    // SPA 回退：优先用同级目录的 index.html（子应用），再退回根
+    const dirIndex = join(resolve(file, ".."), "index.html");
+    file = dirIndex.startsWith(root) && (await stat(dirIndex).then((s) => s.isFile()).catch(() => false))
+      ? dirIndex
+      : join(root, "index.html");
   }
 
   try {

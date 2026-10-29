@@ -1,5 +1,8 @@
 # 自动构建并部署到 GitHub Pages
-# 工作流在推送到 main 时触发；生成站点发布到 gh-pages 或由 Pages 直接托管。
+#
+# 一次部署同时发布两个大版本（目录隔离）：
+#   /            -> main 分支（v2.x，阿里云直连版）
+#   /v1/         -> tag v1.0.0（本地 Qwen + LoRA 版，代码冻结）
 name: Deploy to GitHub Pages
 
 on:
@@ -20,17 +23,44 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main (v2.x)
+        uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Install dependencies
+
+      - name: Install dependencies (v2.x)
         run: npm ci
-      - name: Build
+
+      - name: Build (v2.x)
         run: npm run build
+
+      # ---- v1.0.0：本地模型版，单独检出到 v1-src 后构建，产物放进 dist/v1 ----
+      - name: Checkout v1.0.0
+        uses: actions/checkout@v4
+        with:
+          ref: v1.0.0
+          path: v1-src
+
+      - name: Install dependencies (v1.0.0)
+        run: npm ci
+        working-directory: v1-src
+
+      - name: Build (v1.0.0)
+        run: npm run build
+        working-directory: v1-src
+
+      - name: Merge v1.0.0 into dist/v1
+        run: |
+          mkdir -p dist/v1
+          cp -r v1-src/dist/. dist/v1/
+          ls -la dist/v1
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
