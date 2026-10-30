@@ -26,8 +26,8 @@ const avatarErr = ref('')
 // 草稿：取消时不影响正式数据
 const draft = ref(cloneProfile(profile))
 
-onMounted(() => {
-  loadProfile()
+onMounted(async () => {
+  await loadProfile()
   draft.value = cloneProfile(profile)
 })
 
@@ -149,7 +149,7 @@ function reset() {
   error.value = ''
 }
 
-function save() {
+async function save() {
   const nickname = draft.value.nickname.trim()
   if (!nickname) {
     error.value = '昵称不能为空'
@@ -163,7 +163,7 @@ function save() {
   error.value = ''
 
   const d = draft.value
-  saveProfile({
+  await saveProfile({
     nickname,
     avatar: d.avatar || '🙂',
     avatarUrl: d.avatarUrl || '',

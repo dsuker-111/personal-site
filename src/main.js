@@ -5,12 +5,18 @@ import { auth } from './store/auth'
 
 import './assets/main.css'
 
-// 路由守卫：未登录跳转登录页
-router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !auth.isLoggedIn()) {
-    to.meta.redirected = true
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-})
+// 启动时先恢复 Supabase session
+async function boot() {
+  await auth.checkSession()
 
-createApp(App).use(router).mount('#app')
+  router.beforeEach((to) => {
+    if (to.meta.requiresAuth && !auth.isLoggedIn()) {
+      to.meta.redirected = true
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+  })
+
+  createApp(App).use(router).mount('#app')
+}
+
+boot()

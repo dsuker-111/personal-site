@@ -4,7 +4,10 @@ import { loadWeather, savedCity, saveCity, HOT_CITIES, DEFAULT_CITY } from '../a
 import { loadProfile, preferredCity } from '../store/profile'
 
 // 个人信息里显式设过「默认城市」就以它为准，否则沿用上次查看的城市
-loadProfile()
+// 从本地缓存快速取（页面加载时 Supabase 异步同步）
+try {
+  loadProfile().catch(() => {})
+} catch { /* ignore */ }
 
 const weather = ref(null)
 const loading = ref(false)

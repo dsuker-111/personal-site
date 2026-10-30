@@ -6,30 +6,29 @@ import { auth } from '../store/auth'
 const router = useRouter()
 const route = useRoute()
 
-const tab = ref('login') // 'login' | 'register'
-const form = reactive({ username: '', password: '' })
+const tab = ref('login')
+const form = reactive({ email: '', password: '' })
 const error = ref('')
 const loading = ref(false)
 
-const canSubmit = computed(() => form.username.trim() && form.password.length >= 3)
+const canSubmit = computed(() => form.email.trim().includes('@') && form.password.length >= 6)
 
 async function submit() {
   if (loading.value) return
   error.value = ''
   loading.value = true
   try {
-    let user
     if (tab.value === 'register') {
-      user = auth.register(form.username.trim(), form.password)
-      if (!user) { error.value = '该用户名已被注册，请换一个。'; return }
+      await auth.register(form.email.trim(), form.password)
     } else {
-      user = auth.login(form.username.trim(), form.password)
-      if (!user) { error.value = '用户名或密码错误，请重试。'; return }
+      await auth.login(form.email.trim(), form.password)
     }
+    // 刷新缓存
+    await auth.currentUser()
     const redirect = route.query.redirect || '/'
     router.replace(redirect)
   } catch (e) {
-    error.value = (e && e.message) || '网络异常'
+    error.value = (e && (e.message || e.code)) || '网络异常'
   } finally {
     loading.value = false
   }
@@ -42,7 +41,7 @@ async function submit() {
       <div class="login-brand">
         <div class="brand-logo">AI</div>
         <h1 class="brand-title">个人主页</h1>
-        <p class="brand-sub">登录以进入 AI 助手对话</p>
+        <p class="brand-sub">登录以使用 AI 助手和资源库</p>
       </div>
 
       <div class="login-tabs">
@@ -52,12 +51,12 @@ async function submit() {
 
       <form class="login-form" @submit.prevent="submit">
         <label class="field">
-          <span class="field-label">用户名</span>
+          <span class="field-label">邮箱</span>
           <input
-            v-model.trim="form.username"
-            type="text"
-            autocomplete="username"
-            placeholder="请输入用户名"
+            v-model.trim="form.email"
+            type="email"
+            autocomplete="email"
+            placeholder="请输入邮箱"
             autofocus
           />
         </label>
@@ -68,7 +67,7 @@ async function submit() {
             v-model="form.password"
             type="password"
             autocomplete="current-password"
-            placeholder="至少 3 位"
+            placeholder="至少 6 位"
           />
         </label>
 
@@ -79,7 +78,7 @@ async function submit() {
           <span>{{ loading ? '处理中…' : (tab === 'register' ? '注 册' : '登 录') }}</span>
         </button>
 
-        <p class="login-hint" v-if="tab === 'register'">注册后个人资料和对话记录保留在本机浏览器，数据通过 Supabase 云端备份</p>
+        <p class="login-hint" v-if="tab === 'register'">注册后个人资料和对话记录保存在云端，换电脑登录同样可用</p>
       </form>
     </div>
   </div>

@@ -106,8 +106,8 @@ async function download(f) {
   }
 }
 
-onMounted(() => {
-  loadProfile()
+onMounted(async () => {
+  await loadProfile()
   refresh()
 })
 </script>

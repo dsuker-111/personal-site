@@ -1,7 +1,8 @@
 // 个人信息：昵称、头像、签名、所在地、教育、职业、经历、技能、联系方式
-// 存在 localStorage（按浏览器持久化），保存时同步回登录态，顶栏与主页立即生效。
+// localStorage 即时可用 + Supabase 跨设备同步
 import { reactive } from 'vue'
 import { auth } from './auth'
+import { loadProfileFromDB, saveProfileToDB } from '../api/supabase'
 
 const KEY = 'ps_profile'
 
@@ -74,21 +75,32 @@ export function cloneProfile(src) {
   return JSON.parse(JSON.stringify(src))
 }
 
-/** 读取：登录用户信息为默认值，本地保存过的覆盖其上 */
-export function loadProfile() {
-  const u = auth.currentUser() || {}
+/** 读取：优先 Supabase，兜底 localStorage */
+export async function loadProfile() {
+  const u = (await auth.currentUser()) || {}
+  const base = defaults(u.email ? u.email.split('@')[0] : '', u.nickname || u.email || '')
+
+  // 1. 尝试从 Supabase 加载
+  try {
+    const remote = await loadProfileFromDB()
+    if (remote) {
+      const saved = migrate(base, remote)
+      Object.assign(profile, base, saved)
+      // 同步到本地缓存
+      try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
+      return profile
+    }
+  } catch { /* ignore */ }
+
+  // 2. 兜底 localStorage
   let saved = {}
   try {
     saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}
-  } catch {
-    saved = {}
-  }
+  } catch { saved = {} }
 
-  const base = defaults(u.username, u.nickname)
   saved = migrate(base, saved)
 
-  // 换了账号就用新账号的默认值，避免串号
-  if (saved.username && u.username && saved.username !== u.username) {
+  if (saved.username && u.email && saved.username !== u.email) {
     Object.assign(profile, base)
     return profile
   }
@@ -112,16 +124,16 @@ function migrate(base, saved) {
   return out
 }
 
-/** 保存：写本地 + 同步登录态里的昵称（顶栏、其他页面读 auth 时一致） */
-export function saveProfile(patch) {
+/** 保存：本地 + Supabase + 同步登录态 */
+export async function saveProfile(patch) {
   Object.assign(profile, patch)
   if (Object.prototype.hasOwnProperty.call(patch, 'city')) profile.citySet = true
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...profile }))
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   auth.updateUser({ nickname: profile.nickname })
+  // 异步写 Supabase，不阻塞 UI
+  saveProfileToDB(profile).catch(() => {})
   return profile
 }
 

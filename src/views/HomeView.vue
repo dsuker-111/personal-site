@@ -11,8 +11,8 @@ const router = useRouter()
 // 构建时由 vite.config.js 注入（来源：仓库根目录 VERSION）
 const version = __APP_VERSION__
 
-onMounted(() => {
-  loadProfile()
+onMounted(async () => {
+  await loadProfile()
 })
 </script>
 

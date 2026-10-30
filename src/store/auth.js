@@ -1,66 +1,61 @@
-// 登录态管理：本地用户名+密码注册/登录；数据同步走 Supabase
-import { setToken, clearToken } from '../api/http'
+// 登录态管理：Supabase Auth 邮箱+密码，登录信息存 localStorage 缓存
+import { supabase, signIn, signUp, signOut, isLoggedIn, currentUserId, currentUserEmail } from '../api/supabase'
 
 const STORAGE_KEY = 'ps_auth_user'
-const USERS_KEY = 'ps_users'
 
-function loadUsers() {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '{}') } catch { return {} }
+function cacheUser(user) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(user)) } catch {}
 }
 
-function saveUsers(users) {
-  try { localStorage.setItem(USERS_KEY, JSON.stringify(users)) } catch { /* ignore */ }
+function readCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 
 export const auth = {
-  // 注册
-  register(username, password) {
-    if (!username || !password) return null
-    const users = loadUsers()
-    if (users[username]) return null // 已存在
-    users[username] = password
-    saveUsers(users)
-    const profile = { username, loginAt: Date.now() }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
-    setToken('local')
-    return profile
+  async register(email, password) {
+    return await signUp(email, password)
   },
 
-  // 登录
-  login(username, password) {
-    if (!username || !password) return null
-    const users = loadUsers()
-    if (users[username] !== password) return null
-    const profile = { username, loginAt: Date.now() }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
-    setToken('local')
-    return profile
+  async login(email, password) {
+    return await signIn(email, password)
   },
 
-  logout() {
-    clearToken()
-    localStorage.removeItem(STORAGE_KEY)
+  async logout() {
+    await signOut()
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
   },
 
-  currentUser() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch { return null }
+  async currentUser() {
+    const cached = readCache()
+    if (cached && Date.now() - cached.ts < 30000) return cached
+    const ok = await isLoggedIn()
+    if (!ok) return null
+    const user = {
+      email: await currentUserEmail(),
+      uid: await currentUserId(),
+      ts: Date.now()
+    }
+    cacheUser(user)
+    return user
   },
 
   isLoggedIn() {
-    return !!this.currentUser()
+    // 同步判断用缓存
+    return !!readCache()
   },
 
-  checkSession() {
-    return this.currentUser()
+  async checkSession() {
+    const user = await this.currentUser()
+    return user
   },
 
-  updateUser(patch) {
-    const cur = this.currentUser() || {}
+  async updateUser(patch) {
+    const cur = readCache() || {}
     const next = { ...cur, ...patch }
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+    cacheUser(next)
     return next
   }
 }

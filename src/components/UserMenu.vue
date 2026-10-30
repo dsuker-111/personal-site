@@ -21,9 +21,9 @@ function go(path) {
   router.push(path)
 }
 
-function logout() {
+async function logout() {
   close()
-  auth.logout()
+  await auth.logout()
   router.replace('/login')
 }
 
