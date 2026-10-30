@@ -5,6 +5,7 @@ import { loadProfile, profile } from '../store/profile'
 import WeatherPanel from '../components/WeatherPanel.vue'
 import ChatWidget from '../components/ChatWidget.vue'
 import UserMenu from '../components/UserMenu.vue'
+import ProfileCard from '../components/ProfileCard.vue'
 
 const router = useRouter()
 // 构建时由 vite.config.js 注入（来源：仓库根目录 VERSION）
@@ -37,6 +38,9 @@ onMounted(() => {
           支持切换云端模型，也能接入本机训练的 LoRA 模型。
         </p>
       </section>
+
+      <!-- 个人资料（昵称 / 头像 / 经历 / 技能 / 收藏 / 设备） -->
+      <ProfileCard />
 
       <!-- 主界面：天气 -->
       <WeatherPanel />
