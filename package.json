@@ -1,8 +1,8 @@
 {
   "name": "personal-site",
-  "version": "2.13.0",
+  "version": "3.1.1",
   "private": true,
-  "description": "Personal Site with Supabase Auth, AI Chat, Weather",
+  "description": "Personal Site with local auth, AI Chat, Weather, Supabase Storage",
   "type": "module",
   "scripts": {
     "dev": "vite",
