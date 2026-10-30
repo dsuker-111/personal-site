@@ -7,11 +7,11 @@ const router = useRouter()
 const route = useRoute()
 
 const tab = ref('login') // 'login' | 'register'
-const form = reactive({ email: '', password: '' })
+const form = reactive({ username: '', password: '' })
 const error = ref('')
 const loading = ref(false)
 
-const canSubmit = computed(() => form.email.trim() && form.password.length >= 6)
+const canSubmit = computed(() => form.username.trim() && form.password.length >= 3)
 
 async function submit() {
   if (loading.value) return
@@ -20,24 +20,19 @@ async function submit() {
   try {
     let user
     if (tab.value === 'register') {
-      user = await auth.register(form.email.trim(), form.password)
-      if (!user) { error.value = '注册失败，请稍后重试。'; return }
+      user = auth.register(form.username.trim(), form.password)
+      if (!user) { error.value = '该用户名已被注册，请换一个。'; return }
     } else {
-      user = await auth.login(form.email.trim(), form.password)
-      if (!user) { error.value = '邮箱或密码错误，请重试。'; return }
+      user = auth.login(form.username.trim(), form.password)
+      if (!user) { error.value = '用户名或密码错误，请重试。'; return }
     }
     const redirect = route.query.redirect || '/'
     router.replace(redirect)
   } catch (e) {
-    error.value = (e && (e.message || e.code)) || '网络异常，请稍后重试。'
+    error.value = (e && e.message) || '网络异常'
   } finally {
     loading.value = false
   }
-}
-
-// 回车切换
-function onPasswordEnter() {
-  if (canSubmit.value && !loading.value) submit()
 }
 </script>
 
@@ -50,7 +45,6 @@ function onPasswordEnter() {
         <p class="brand-sub">登录以进入 AI 助手对话</p>
       </div>
 
-      <!-- 标签切换 -->
       <div class="login-tabs">
         <button :class="{ active: tab === 'login' }" type="button" @click="tab = 'login'">登录</button>
         <button :class="{ active: tab === 'register' }" type="button" @click="tab = 'register'">注册</button>
@@ -58,12 +52,12 @@ function onPasswordEnter() {
 
       <form class="login-form" @submit.prevent="submit">
         <label class="field">
-          <span class="field-label">邮箱</span>
+          <span class="field-label">用户名</span>
           <input
-            v-model.trim="form.email"
-            type="email"
-            autocomplete="email"
-            placeholder="your@email.com"
+            v-model.trim="form.username"
+            type="text"
+            autocomplete="username"
+            placeholder="请输入用户名"
             autofocus
           />
         </label>
@@ -74,8 +68,7 @@ function onPasswordEnter() {
             v-model="form.password"
             type="password"
             autocomplete="current-password"
-            placeholder="至少 6 位"
-            @keydown.enter="onPasswordEnter"
+            placeholder="至少 3 位"
           />
         </label>
 
@@ -86,7 +79,7 @@ function onPasswordEnter() {
           <span>{{ loading ? '处理中…' : (tab === 'register' ? '注 册' : '登 录') }}</span>
         </button>
 
-        <p class="login-hint" v-if="tab === 'register'">注册后同一账号可在任何设备登录，个人资料和对话记录云端同步</p>
+        <p class="login-hint" v-if="tab === 'register'">注册后个人资料和对话记录保留在本机浏览器，数据通过 Supabase 云端备份</p>
       </form>
     </div>
   </div>

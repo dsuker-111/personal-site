@@ -3,7 +3,6 @@ import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { chat, checkHealth, MODEL } from '../api/model'
 import { listCloudModels, listLocalModels, probeLocal, inspectLocal, LOCAL_ID, LOCAL_META, isLocalId } from '../api/models'
 import { formatSize } from '../api/files'
-import { supabase, currentUserId } from '../api/supabase'
 
 const MODEL_KEY = 'ps_chat_model'
 
@@ -112,12 +111,6 @@ async function send(pre = '') {
   addMessage('user', text)
   busy.value = true
 
-  // 写入 Supabase
-  const uid = await currentUserId()
-  if (uid) {
-    try { await supabase.from('chat_history').insert({ user_id: uid, role: 'user', content: text }) } catch {}
-  }
-
   const history = messages.value
     .filter((m) => m.role === 'user' || m.role === 'ai')
     .slice(-10)
@@ -135,10 +128,7 @@ async function send(pre = '') {
       state: 'online',
       text: '已连接 · ' + modelLabel.value + (res.local ? '（本机）' : '')
     }
-    // 写入 Supabase
-    if (uid) {
-      try { await supabase.from('chat_history').insert({ user_id: uid, role: 'ai', content: res.answer, model: res.model || '' }) } catch {}
-    }
+  } catch (err) {
     const msg = err && err.message ? err.message : String(err)
     const online = await ping()
     addMessage('ai', online ? '请求失败：' + msg : isLocal.value ? localHint.value : '无法连接 AI 服务。' + offlineHint.value)

@@ -1,33 +1,45 @@
-// 登录态管理：Supabase Auth + 本地回退
-import { supabase, signIn, signUp, signOut, isLoggedIn, currentUserId } from '../api/supabase'
+// 登录态管理：本地用户名+密码注册/登录；数据同步走 Supabase
 import { setToken, clearToken } from '../api/http'
 
 const STORAGE_KEY = 'ps_auth_user'
+const USERS_KEY = 'ps_users'
+
+function loadUsers() {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '{}') } catch { return {} }
+}
+
+function saveUsers(users) {
+  try { localStorage.setItem(USERS_KEY, JSON.stringify(users)) } catch { /* ignore */ }
+}
 
 export const auth = {
-  async login(email, password) {
-    const { user } = await signIn(email, password)
-    // supabase session 已自动存 localStorage
-    setToken('supabase') // 标记已登录
-    const profile = { id: user.id, email: user.email, nickname: '', loginAt: Date.now() }
+  // 注册
+  register(username, password) {
+    if (!username || !password) return null
+    const users = loadUsers()
+    if (users[username]) return null // 已存在
+    users[username] = password
+    saveUsers(users)
+    const profile = { username, loginAt: Date.now() }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+    setToken('local')
     return profile
   },
 
-  async register(email, password) {
-    const { user } = await signUp(email, password)
-    setToken('supabase')
-    const profile = { id: user.id, email: user.email, nickname: '', loginAt: Date.now() }
+  // 登录
+  login(username, password) {
+    if (!username || !password) return null
+    const users = loadUsers()
+    if (users[username] !== password) return null
+    const profile = { username, loginAt: Date.now() }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+    setToken('local')
     return profile
   },
 
-  async logout() {
-    await signOut()
+  logout() {
     clearToken()
     localStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem('ps_profile')
-    localStorage.removeItem('ps_chat_history')
   },
 
   currentUser() {
@@ -37,12 +49,11 @@ export const auth = {
     } catch { return null }
   },
 
-  async checkSession() {
-    const loggedIn = await isLoggedIn()
-    if (!loggedIn) {
-      this.logout()
-      return null
-    }
+  isLoggedIn() {
+    return !!this.currentUser()
+  },
+
+  checkSession() {
     return this.currentUser()
   },
 
