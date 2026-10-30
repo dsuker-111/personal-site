@@ -149,7 +149,7 @@ function reset() {
   error.value = ''
 }
 
-function save() {
+async function save() {
   const nickname = draft.value.nickname.trim()
   if (!nickname) {
     error.value = '昵称不能为空'
@@ -163,7 +163,7 @@ function save() {
   error.value = ''
 
   const d = draft.value
-  saveProfile({
+  await saveProfile({
     nickname,
     avatar: d.avatar || '🙂',
     avatarUrl: d.avatarUrl || '',

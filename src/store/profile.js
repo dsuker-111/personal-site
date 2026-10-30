@@ -1,7 +1,8 @@
 // 个人信息：昵称、头像、签名、所在地、教育、职业、经历、技能、联系方式
-// 存在 localStorage（按浏览器持久化），保存时同步回登录态，顶栏与主页立即生效。
+// 双写：localStorage（即时可用）+ Supabase（跨设备云同步）
 import { reactive } from 'vue'
 import { auth } from './auth'
+import { supabase, currentUserId } from '../api/supabase'
 
 const KEY = 'ps_profile'
 
@@ -112,16 +113,36 @@ function migrate(base, saved) {
   return out
 }
 
-/** 保存：写本地 + 同步登录态里的昵称（顶栏、其他页面读 auth 时一致） */
-export function saveProfile(patch) {
+/** 保存：写本地 + Supabase + 同步登录态昵称 */
+export async function saveProfile(patch) {
   Object.assign(profile, patch)
   if (Object.prototype.hasOwnProperty.call(patch, 'city')) profile.citySet = true
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...profile }))
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   auth.updateUser({ nickname: profile.nickname })
+
+  // 同步到 Supabase
+  const uid = await currentUserId()
+  if (uid) {
+    const row = {
+      nickname: profile.nickname,
+      avatar: profile.avatar,
+      bio: profile.bio,
+      location: profile.location,
+      job: profile.title,
+      company: profile.company,
+      education: JSON.stringify({ school: profile.school, major: profile.major, degree: profile.degree, period: profile.eduPeriod }),
+      skills: JSON.stringify(profile.skills),
+      sites: JSON.stringify(profile.sites),
+      devices: JSON.stringify(profile.devices),
+      experiences: JSON.stringify(profile.experiences),
+      updated_at: new Date().toISOString()
+    }
+    try {
+      await supabase.from('profiles').upsert({ id: uid, ...row })
+    } catch { /* ignore */ }
+  }
   return profile
 }
 

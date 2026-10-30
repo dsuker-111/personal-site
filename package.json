@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "personal-site",
   "version": "2.13.0",
   "private": true,
-  "description": "涓汉缃戦〉锛氱櫥褰?鈫?澶╂皵涓荤晫闈?+ 娴姩 AI 瀵硅瘽妗?+ 涓汉淇℃伅锛堥樋閲屼簯鐧剧偧 deepseek-v4.1-flash / 鍙€夋湰鍦?Qwen2.5-0.5B-Instruct + lora_qa锛? 璧勬簮搴?,
+  "description": "Personal Site with Supabase Auth, AI Chat, Weather",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "deploy:backend": "node server-fc/deploy.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "vue": "^3.4.38",
     "vue-router": "^4.4.3"
   },

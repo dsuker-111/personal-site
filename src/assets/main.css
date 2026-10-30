@@ -92,6 +92,35 @@ button, input, textarea {
   font-size: 14px;
 }
 
+/* 登录/注册标签 */
+.login-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.login-tabs button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: var(--bg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-soft);
+  transition: background .18s, color .18s;
+}
+
+.login-tabs button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.login-tabs button:first-child { border-right: 1px solid var(--border); }
+
 .login-form {
   display: flex;
   flex-direction: column;
