@@ -37,24 +37,44 @@ export async function listFiles() {
     })
 }
 
+/** 生成 Supabase Storage 安全 key：只保留 ASCII 字母数字和 -_. */
+function safeKey(filename) {
+  const dot = filename.lastIndexOf('.')
+  const name = dot >= 0 ? filename.slice(0, dot) : filename
+  const ext = dot >= 0 ? filename.slice(dot) : ''
+  // 去除非 ASCII 和特殊字符，长度兜底
+  let safe = name.replace(/[^a-zA-Z0-9._-]/g, '').replace(/\.{2,}/g, '.')
+  if (!safe || safe.length < 1) safe = 'file_' + Date.now().toString(36)
+  if (safe.length > 80) safe = safe.slice(0, 80)
+  return safe + ext
+}
+
 /** 上传文件 */
 export async function uploadFile(file, onProgress) {
   if (file.size > MAX_FILE_SIZE) throw new Error('文件超过 20MB，无法上传')
   if (onProgress) onProgress(30)
 
+  const key = safeKey(file.name)
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .upload(file.name, file, {
+    .upload(key, file, {
       cacheControl: '3600',
-      upsert: true
+      upsert: true,
+      contentType: file.type || 'application/octet-stream'
     })
 
   if (error) throw new Error('上传失败：' + error.message)
+  // 把原始中文名存为自定义元数据
+  const origName = file.name
+  if (origName !== key) {
+    try { await supabase.storage.from(BUCKET).updateMetadata(data.path, { original_name: origName }) } catch {}
+  }
   if (onProgress) onProgress(100)
 
   return {
     path: data.path,
-    name: file.name,
+    key,
+    name: file.name,   // 界面上仍显示中文原名
     size: file.size,
     kind: kindOf(file.name),
     url: getPublicUrl(data.path)
