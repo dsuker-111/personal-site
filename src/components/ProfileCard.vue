@@ -9,8 +9,12 @@ import {
   filledDevices,
   hostOf
 } from '../store/profile'
+import { auth } from '../store/auth'
 
 const router = useRouter()
+
+// 仅登录用户可编辑
+const loggedIn = computed(() => auth.isLoggedIn())
 
 // 只展示真正填了的内容（收藏 / 设备 / 技能 / 经历）
 const sites = computed(() => filledSites(profile))
@@ -53,7 +57,7 @@ function edit() {
       <div class="pcard-id">
         <div class="pcard-name">
           <h2>{{ profile.nickname || '未命名' }}</h2>
-          <button class="pcard-edit" type="button" title="编辑个人信息" @click="edit">✎</button>
+          <button v-if="loggedIn" class="pcard-edit" type="button" title="编辑个人信息" @click="edit">✎</button>
         </div>
         <p v-if="jobLine(profile)" class="pcard-job">{{ jobLine(profile) }}</p>
         <p class="pcard-bio">{{ profile.bio || '这个人很懒，什么都没写。' }}</p>

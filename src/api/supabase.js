@@ -45,19 +45,37 @@ export async function signOut() {
 
 // ====== 个人资料读写 ======
 
-/** 读取个人资料 */
+// 把数据库行的 JSON 文本字段还原成结构
+function decodeProfileRow(data) {
+  if (!data) return null
+  const out = { ...data }
+  try { out.education = JSON.parse(out.education || '{}') } catch { out.education = {} }
+  try { out.skills = JSON.parse(out.skills || '[]') } catch { out.skills = [] }
+  try { out.sites = JSON.parse(out.sites || '[]') } catch { out.sites = [] }
+  try { out.devices = JSON.parse(out.devices || '[]') } catch { out.devices = [] }
+  try { out.experiences = JSON.parse(out.experiences || '[]') } catch { out.experiences = [] }
+  return out
+}
+
+/** 读取登录用户本人的资料 */
 export async function loadProfileFromDB() {
   const uid = await currentUserId()
   if (!uid) return null
   const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
   if (error || !data) return null
-  // 将 JSON 字符串字段还原
-  try { data.education = JSON.parse(data.education || '{}') } catch { data.education = {} }
-  try { data.skills = JSON.parse(data.skills || '[]') } catch { data.skills = [] }
-  try { data.sites = JSON.parse(data.sites || '[]') } catch { data.sites = [] }
-  try { data.devices = JSON.parse(data.devices || '[]') } catch { data.devices = [] }
-  try { data.experiences = JSON.parse(data.experiences || '[]') } catch { data.experiences = [] }
-  return data
+  return decodeProfileRow(data)
+}
+
+/** 读取公开资料（未登录 / 访客用）：取第一条有内容的记录作为公开名片 */
+export async function loadPublicProfile() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return decodeProfileRow(data)
 }
 
 /** 保存个人资料 */

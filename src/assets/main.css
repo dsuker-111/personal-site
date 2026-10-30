@@ -263,6 +263,33 @@ button, input, textarea {
   filter: brightness(1.12);
 }
 
+.auth-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  transition: filter .2s, background .2s;
+}
+
+.auth-btn:hover {
+  background: #f1f5f9;
+}
+
+.auth-btn.primary {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+.auth-btn.primary:hover {
+  filter: brightness(1.12);
+}
+
 .user-chip {
   display: inline-flex;
   align-items: center;

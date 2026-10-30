@@ -2,7 +2,7 @@
 // localStorage 即时可用 + Supabase 跨设备同步
 import { reactive } from 'vue'
 import { auth } from './auth'
-import { loadProfileFromDB, saveProfileToDB } from '../api/supabase'
+import { loadProfileFromDB, saveProfileToDB, loadPublicProfile } from '../api/supabase'
 
 const KEY = 'ps_profile'
 
@@ -75,18 +75,30 @@ export function cloneProfile(src) {
   return JSON.parse(JSON.stringify(src))
 }
 
-/** 读取：优先 Supabase，兜底 localStorage */
+/** 读取：登录用户读本人资料，未登录读公开名片 */
 export async function loadProfile() {
   const u = (await auth.currentUser()) || {}
   const base = defaults(u.email ? u.email.split('@')[0] : '', u.nickname || u.email || '')
 
-  // 1. 尝试从 Supabase 加载
+  // 0. 已有本地缓存且登录态一致：快速取用（避免每次刷新等待网络）
+  const cached = (() => { try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null } })()
+  if (cached && !u.uid) {
+    Object.assign(profile, base, migrate(base, cached))
+    // 未登录时后台刷新公开资料
+    try {
+      const pub = await loadPublicProfile()
+      if (pub) Object.assign(profile, base, migrate(base, pub))
+      try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
+    } catch { /* ignore */ }
+    return profile
+  }
+
+  // 1. 登录用户：本人资料；未登录：公开名片
   try {
-    const remote = await loadProfileFromDB()
+    const remote = u.uid ? await loadProfileFromDB() : await loadPublicProfile()
     if (remote) {
       const saved = migrate(base, remote)
       Object.assign(profile, base, saved)
-      // 同步到本地缓存
       try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
       return profile
     }
