@@ -5,7 +5,7 @@ const routes = [
     path: '/',
     name: 'home',
     component: () => import('../views/HomeView.vue'),
-    meta: { requiresAuth: false, title: '个人主页' }
+    meta: { requiresAuth: true, title: '个人主页' }
   },
   {
     path: '/library',

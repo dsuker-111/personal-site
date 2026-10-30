@@ -1,15 +1,23 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth } from '../store/auth'
+import { loadProfile } from '../store/profile'
+import ProfileCard from '../components/ProfileCard.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const tab = ref('login')
+// 默认 tab：登录/注册可切换（从 URL 参数支持直达注册）
+const tab = ref(route.query.tab === 'register' ? 'register' : 'login')
 const form = reactive({ email: '', password: '' })
 const error = ref('')
 const loading = ref(false)
+
+// 加载公开资料卡
+onMounted(async () => {
+  await loadProfile()
+})
 
 const canSubmit = computed(() => form.email.trim().includes('@') && form.password.length >= 6)
 
@@ -37,11 +45,21 @@ async function submit() {
 
 <template>
   <div class="login-page">
+    <!-- 左：公开资料名片 -->
+    <div class="login-identity">
+      <div class="login-identity-head">
+        <span class="brand-logo">AI</span>
+        <p class="login-identity-sub">登录以编辑资料、使用 AI 助手和资源库</p>
+      </div>
+      <ProfileCard />
+    </div>
+
+    <!-- 右：登录/注册表单 -->
     <div class="login-card">
       <div class="login-brand">
         <div class="brand-logo">AI</div>
         <h1 class="brand-title">个人主页</h1>
-        <p class="brand-sub">登录以使用 AI 助手和资源库</p>
+        <p class="brand-sub">{{ tab === 'login' ? '登录以继续' : '注册新账号' }}</p>
       </div>
 
       <div class="login-tabs">
