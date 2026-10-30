@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { loadProfile } from '../store/profile'
-import { HAS_BACKEND } from '../api/http'
-import { listFiles, uploadFile, deleteFile, downloadFile, formatSize } from '../api/files'
+import { listFiles, uploadFile, deleteFile, downloadFileResource as downloadFile, formatSize } from '../api/files'
 import UserMenu from '../components/UserMenu.vue'
 
 const files = ref([])
@@ -41,10 +40,6 @@ const tabs = [
 ]
 
 async function refresh() {
-  if (!HAS_BACKEND) {
-    error.value = '当前是纯静态版本，未配置后端，无法使用资源库。'
-    return
-  }
   loading.value = true
   error.value = ''
   try {
@@ -57,10 +52,6 @@ async function refresh() {
 }
 
 async function handleFiles(fileList) {
-  if (!HAS_BACKEND) {
-    notify('未配置后端，无法上传')
-    return
-  }
   const arr = Array.from(fileList || [])
   if (!arr.length) return
 

@@ -1,30 +1,82 @@
-// 资源库接口
-import { request, fileUrl } from './http'
+// 资源库接口 · 走 Supabase Storage（免费 1GB，不依赖阿里云 FC3）
+import { supabase } from './supabase'
 
+const BUCKET = 'library'
+const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
+
+const KIND_MAP = {
+  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', bmp: 'image', ico: 'image',
+  mp4: 'video', webm: 'video', mov: 'video', avi: 'video', mkv: 'video'
+}
+
+function kindOf(filename) {
+  const ext = (filename.split('.').pop() || '').toLowerCase()
+  return KIND_MAP[ext] || 'file'
+}
+
+/** 列出所有文件（仅登录用户的文件） */
 export async function listFiles() {
-  const d = await request('/api/files')
-  return (d.files || []).map((f) => ({ ...f, url: fileUrl(f.path) }))
-}
-
-export async function uploadFile(file, onProgress) {
-  const data = await readAsBase64(file)
-  if (onProgress) onProgress(60)
-  const d = await request('/api/upload', {
-    method: 'POST',
-    body: { name: file.name, contentType: file.type || 'application/octet-stream', data },
-    timeout: 180000
+  const { data, error } = await supabase.storage.from(BUCKET).list('', {
+    limit: 500,
+    sortBy: { column: 'created_at', order: 'desc' }
   })
+  if (error) throw new Error('读取文件列表失败：' + error.message)
+
+  return (data || [])
+    .filter((f) => f.name !== '.emptyFolderPlaceholder')
+    .map((f) => {
+      const url = getPublicUrl(f.name)
+      return {
+        name: f.name,
+        path: f.name,
+        size: f.metadata?.size || 0,
+        kind: kindOf(f.name),
+        updatedAt: f.updated_at || f.created_at,
+        url
+      }
+    })
+}
+
+/** 上传文件 */
+export async function uploadFile(file, onProgress) {
+  if (file.size > MAX_FILE_SIZE) throw new Error('文件超过 20MB，无法上传')
+  if (onProgress) onProgress(30)
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .upload(file.name, file, {
+      cacheControl: '3600',
+      upsert: true
+    })
+
+  if (error) throw new Error('上传失败：' + error.message)
   if (onProgress) onProgress(100)
-  return d.file
+
+  return {
+    path: data.path,
+    name: file.name,
+    size: file.size,
+    kind: kindOf(file.name),
+    url: getPublicUrl(data.path)
+  }
 }
 
-export async function deleteFile(path) {
-  return request('/api/delete', { method: 'POST', body: { path } })
+/** 删除文件 */
+export async function deleteFile(filepath) {
+  const { error } = await supabase.storage.from(BUCKET).remove([filepath])
+  if (error) throw new Error('删除失败：' + error.message)
 }
 
-export async function downloadFile(f) {
+/** 公开访问 URL */
+export function getPublicUrl(filepath) {
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filepath)
+  return data.publicUrl
+}
+
+/** 下载文件（浏览器触发下载） */
+export async function downloadFileResource(f) {
   const res = await fetch(f.url)
-  if (!res.ok) throw new Error('下载失败 HTTP ' + res.status)
+  if (!res.ok) throw new Error('下载失败')
   const blob = await res.blob()
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
@@ -33,19 +85,6 @@ export async function downloadFile(f) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(a.href), 4000)
-}
-
-function readAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const s = String(reader.result || '')
-      const i = s.indexOf(',')
-      resolve(i >= 0 ? s.slice(i + 1) : s)
-    }
-    reader.onerror = () => reject(new Error('读取文件失败'))
-    reader.readAsDataURL(file)
-  })
 }
 
 export function formatSize(bytes) {
