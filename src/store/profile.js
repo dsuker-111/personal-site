@@ -75,48 +75,50 @@ export function cloneProfile(src) {
   return JSON.parse(JSON.stringify(src))
 }
 
-/** 读取：登录用户读本人资料，未登录读公开名片 */
+function readLocal() {
+  try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null }
+}
+
+function writeLocal() {
+  try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
+}
+
+/** 读取：本地账号只读本机；云端账号读云端；访客读公开名片 */
 export async function loadProfile() {
   const u = (await auth.currentUser()) || {}
   const base = defaults(u.email ? u.email.split('@')[0] : '', u.nickname || u.email || '')
+  const cached = readLocal()
 
-  // 0. 已有本地缓存且登录态一致：快速取用（避免每次刷新等待网络）
-  const cached = (() => { try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null } })()
-  if (cached && !u.uid) {
-    Object.assign(profile, base, migrate(base, cached))
-    // 未登录时后台刷新公开资料
+  // 0. 本地账号：资料只在本机，不发任何网络请求
+  if (u.mode === 'local') {
+    Object.assign(profile, base, migrate(base, cached || {}))
+    return profile
+  }
+
+  // 1. 云端账号：先用缓存渲染，再拉云端本人资料
+  if (u.uid) {
+    if (cached) Object.assign(profile, base, migrate(base, cached))
+    else Object.assign(profile, base)
     try {
-      const pub = await loadPublicProfile()
-      if (pub) Object.assign(profile, base, migrate(base, pub))
-      try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
-    } catch { /* ignore */ }
+      const remote = await loadProfileFromDB()
+      if (remote) {
+        Object.assign(profile, base, migrate(base, remote))
+        writeLocal()
+      }
+    } catch { /* 云端不可用就保持缓存/默认值 */ }
     return profile
   }
 
-  // 1. 登录用户：本人资料；未登录：公开名片
-  try {
-    const remote = u.uid ? await loadProfileFromDB() : await loadPublicProfile()
-    if (remote) {
-      const saved = migrate(base, remote)
-      Object.assign(profile, base, saved)
-      try { localStorage.setItem(KEY, JSON.stringify({ ...profile })) } catch {}
-      return profile
-    }
-  } catch { /* ignore */ }
-
-  // 2. 兜底 localStorage
-  let saved = {}
-  try {
-    saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}
-  } catch { saved = {} }
-
-  saved = migrate(base, saved)
-
-  if (saved.username && u.email && saved.username !== u.email) {
-    Object.assign(profile, base)
-    return profile
-  }
-  Object.assign(profile, base, saved)
+  // 2. 访客：立刻用缓存/默认值渲染，公开名片后台刷新（不阻塞页面）
+  Object.assign(profile, base, cached ? migrate(base, cached) : {})
+  loadPublicProfile()
+    .then((pub) => {
+      if (pub) {
+        Object.assign(profile, base, migrate(base, pub))
+        writeLocal()
+      }
+    })
+    .catch(() => {})
   return profile
 }
 
