@@ -140,8 +140,13 @@ async function submit() {
               <span>{{ loading ? '处理中…' : (tab === 'register' ? '注 册' : '登 录') }}</span>
             </button>
 
-            <p class="login-hint" v-if="tab === 'register'">注册后个人资料保存在云端，换电脑登录同样可用</p>
+            <p class="login-hint" v-if="tab === 'register'">注册后个人资料自动保存；连不上云端时账号会存在本机</p>
           </form>
+
+          <p class="login-mode">
+            云端可用时自动同步账号与资料；<br />
+            连不上云端时会自动改用<strong>本机账号</strong>（数据只保存在这台电脑）。
+          </p>
         </section>
       </div>
     </transition>
@@ -273,6 +278,20 @@ async function submit() {
   margin-top: 6px;
   font-size: 13px;
   color: var(--text-soft);
+}
+
+.login-mode {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.login-mode strong {
+  color: var(--primary);
 }
 
 .auth-fade-enter-active,

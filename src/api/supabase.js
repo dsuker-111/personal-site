@@ -4,7 +4,17 @@ import { createClient } from '@supabase/supabase-js'
 const URL = 'https://dvkbgbylwlomjevfckcj.supabase.co'
 const KEY = 'sb_publishable_4Zm9p0KB-Rst6J9StoVZaA_GOgs4N8r'
 
-export const supabase = createClient(URL, KEY)
+// 给所有请求加超时：网络被阻断时不要一直挂着
+const REQUEST_TIMEOUT = 8000
+function fetchWithTimeout(input, init = {}) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT)
+  return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer))
+}
+
+export const supabase = createClient(URL, KEY, {
+  global: { fetch: fetchWithTimeout }
+})
 
 // 判断是否已登录
 export async function isLoggedIn() {

@@ -5,9 +5,12 @@ import { auth } from './store/auth'
 
 import './assets/main.css'
 
-// 启动时先恢复 Supabase session
+// 启动时恢复会话：云端优先，连不上就快速降级到本地账号，绝不让首屏卡住
 async function boot() {
-  await auth.checkSession()
+  await Promise.race([
+    auth.checkSession(),
+    new Promise((resolve) => setTimeout(resolve, 3000))
+  ])
 
   router.beforeEach((to) => {
     if (to.meta.requiresAuth && !auth.isLoggedIn()) {
