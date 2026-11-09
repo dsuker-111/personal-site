@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/inline-build.mjs",
     "preview": "vite preview",
     "deploy:surge": "npx --yes surge ./dist personal-site-ai.surge.sh",
     "server": "python server/cloud_api.py",

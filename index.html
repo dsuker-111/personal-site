@@ -54,6 +54,13 @@
         if (detail) detail.textContent = msg + (src ? '（' + src + '）' : '') + ' —— 请强制刷新（Ctrl + F5）后重试。'
       }, true)
     </script>
+    <script nomodule>
+      // 只有不支持 ES Module 的旧浏览器会执行这里
+      var tip = document.querySelector('.boot-tip strong')
+      var txt = document.querySelector('.boot-tip p')
+      if (tip) tip.textContent = '当前浏览器版本过低'
+      if (txt) txt.textContent = '本站需要支持 ES Module 的浏览器，请使用最新版 Chrome、Edge、Safari 或火狐打开。'
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

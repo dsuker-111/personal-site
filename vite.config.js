@@ -10,6 +10,14 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION)
   },
+  build: {
+    // 打包成单个 chunk，便于构建后把脚本内联进 index.html（单文件部署）
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true
+      }
+    }
+  },
   // 相对路径基址：确保部署到 GitHub Pages 子路径也能正确加载静态资源
   base: './',
   server: {
