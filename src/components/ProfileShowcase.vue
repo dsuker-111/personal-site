@@ -163,8 +163,10 @@ function edit() {
 }
 
 .scard {
-  background: var(--card);
-  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--tint-a), var(--tint-b));
+  border: 1px solid var(--tint-line);
   border-radius: 18px;
   padding: 20px 22px;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
@@ -172,6 +174,90 @@ function edit() {
   flex-direction: column;
   min-height: 168px;
   min-width: 0;
+}
+
+/* 顶部彩色细条 */
+.scard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--accent);
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* 右下角柔光斑 */
+.scard::after {
+  content: '';
+  position: absolute;
+  right: -46px;
+  bottom: -58px;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: .13;
+  filter: blur(26px);
+  pointer-events: none;
+}
+
+/* 内容压在装饰层之上 */
+.scard > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 每张卡片的配色 */
+.hero {
+  --tint-a: #e0e7ff;
+  --tint-b: #ede9fe;
+  --accent: #6366f1;
+  --tint-line: #c7d2fe;
+}
+
+.info {
+  --tint-a: #ecfeff;
+  --tint-b: #f0fdfa;
+  --accent: #06b6d4;
+  --tint-line: #a5f3fc;
+}
+
+.skills {
+  --tint-a: #fefce8;
+  --tint-b: #fdecc8;
+  --accent: #f59e0b;
+  --tint-line: #f5d68a;
+}
+
+.exp {
+  --tint-a: #eff6ff;
+  --tint-b: #dbeafe;
+  --accent: #3b82f6;
+  --tint-line: #b7d3fb;
+}
+
+.contact {
+  --tint-a: #fdf2f8;
+  --tint-b: #fce7f3;
+  --accent: #ec4899;
+  --tint-line: #fbcfe8;
+}
+
+.sites {
+  --tint-a: #f0fdf4;
+  --tint-b: #d1fae5;
+  --accent: #22c55e;
+  --tint-line: #a7f0c4;
+}
+
+.devices {
+  --tint-a: #fff7ed;
+  --tint-b: #ffe4cc;
+  --accent: #f97316;
+  --tint-line: #fbcfa5;
 }
 
 .hero { grid-column: span 2; }
@@ -283,7 +369,7 @@ function edit() {
 /* 空状态 */
 .empty {
   font-size: 13px;
-  color: #94a3b8;
+  color: #59667a;
   align-self: flex-start;
 }
 
