@@ -165,11 +165,14 @@ function edit() {
 .scard {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--tint-a), var(--tint-b));
-  border: 1px solid var(--tint-line);
+  background-color: rgba(255, 255, 255, 0.55);
+  background-image: linear-gradient(135deg, var(--tint-a), var(--tint-b));
+  backdrop-filter: blur(16px) saturate(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(1.08);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 18px;
   padding: 20px 22px;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.15), 0 2px 6px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
   min-height: 168px;
@@ -210,54 +213,54 @@ function edit() {
   z-index: 1;
 }
 
-/* 每张卡片的配色 */
+/* 每张卡片的配色（淡彩 + 半透明，让背景照片透出来） */
 .hero {
-  --tint-a: #e0e7ff;
-  --tint-b: #ede9fe;
+  --tint-a: rgba(224, 231, 255, 0.52);
+  --tint-b: rgba(237, 233, 254, 0.62);
   --accent: #6366f1;
-  --tint-line: #c7d2fe;
+  --tint-line: rgba(199, 210, 254, 0.9);
 }
 
 .info {
-  --tint-a: #ecfeff;
-  --tint-b: #f0fdfa;
+  --tint-a: rgba(236, 254, 255, 0.5);
+  --tint-b: rgba(240, 253, 250, 0.6);
   --accent: #06b6d4;
-  --tint-line: #a5f3fc;
+  --tint-line: rgba(165, 243, 252, 0.9);
 }
 
 .skills {
-  --tint-a: #fefce8;
-  --tint-b: #fdecc8;
+  --tint-a: rgba(254, 252, 232, 0.54);
+  --tint-b: rgba(253, 236, 200, 0.64);
   --accent: #f59e0b;
-  --tint-line: #f5d68a;
+  --tint-line: rgba(245, 214, 138, 0.9);
 }
 
 .exp {
-  --tint-a: #eff6ff;
-  --tint-b: #dbeafe;
+  --tint-a: rgba(239, 246, 255, 0.52);
+  --tint-b: rgba(219, 234, 254, 0.62);
   --accent: #3b82f6;
-  --tint-line: #b7d3fb;
+  --tint-line: rgba(183, 211, 251, 0.9);
 }
 
 .contact {
-  --tint-a: #fdf2f8;
-  --tint-b: #fce7f3;
+  --tint-a: rgba(253, 242, 248, 0.52);
+  --tint-b: rgba(252, 231, 243, 0.62);
   --accent: #ec4899;
-  --tint-line: #fbcfe8;
+  --tint-line: rgba(251, 207, 232, 0.9);
 }
 
 .sites {
-  --tint-a: #f0fdf4;
-  --tint-b: #d1fae5;
+  --tint-a: rgba(240, 253, 244, 0.5);
+  --tint-b: rgba(209, 250, 229, 0.6);
   --accent: #22c55e;
-  --tint-line: #a7f0c4;
+  --tint-line: rgba(167, 240, 196, 0.9);
 }
 
 .devices {
-  --tint-a: #fff7ed;
-  --tint-b: #ffe4cc;
+  --tint-a: rgba(255, 247, 237, 0.54);
+  --tint-b: rgba(255, 228, 204, 0.64);
   --accent: #f97316;
-  --tint-line: #fbcfa5;
+  --tint-line: rgba(251, 207, 165, 0.9);
 }
 
 .hero { grid-column: span 2; }

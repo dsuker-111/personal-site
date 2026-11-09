@@ -153,12 +153,28 @@ function edit() {
 
 <style scoped>
 .pcard {
-  background: var(--card);
-  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(1.06);
+  -webkit-backdrop-filter: blur(16px) saturate(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 18px;
   padding: 20px 22px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
   margin-bottom: 22px;
+}
+
+/* 顶部渐变色条，与展示页卡片呼应 */
+.pcard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  opacity: .7;
 }
 
 /* 头部 */

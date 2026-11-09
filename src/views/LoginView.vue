@@ -194,20 +194,24 @@ async function submit() {
 /* 右上角小登录按钮 */
 .auth-trigger {
   padding: 7px 18px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 999px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   color: var(--text);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: background .18s, border-color .18s, color .18s;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+  transition: background .18s, border-color .18s, color .18s, transform .12s;
 }
 
 .auth-trigger:hover {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+  transform: translateY(-1px);
 }
 
 /* 主体：铺满 */
