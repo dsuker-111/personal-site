@@ -2,7 +2,6 @@
 import { onMounted } from 'vue'
 import { loadProfile, profile } from '../store/profile'
 import WeatherPanel from '../components/WeatherPanel.vue'
-import ChatWidget from '../components/ChatWidget.vue'
 import UserMenu from '../components/UserMenu.vue'
 import ProfileCard from '../components/ProfileCard.vue'
 
@@ -18,7 +17,7 @@ onMounted(async () => {
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-left">
-        <span class="logo">AI</span>
+        <span class="logo">主</span>
         <span class="app-name">个人主页</span>
       </div>
       <div class="topbar-right">
@@ -32,8 +31,7 @@ onMounted(async () => {
       <section class="hero">
         <h2>欢迎回来，{{ profile.nickname }}！</h2>
         <p>
-          主页展示实时天气，右下角的 <strong>AI 助手</strong> 是一个浮动对话框 —— 点开即可对话，
-          支持切换云端模型，也能接入本机训练的 LoRA 模型。
+          主页展示个人资料与实时天气。登录后可编辑个人信息、管理资源库。
         </p>
       </section>
 
@@ -45,10 +43,7 @@ onMounted(async () => {
     </main>
 
     <footer class="footer">
-      QQ 软件开发工程实践 · 个人网页 v{{ version }} · 天气 + AI 助手
+      QQ 软件开发工程实践 · 个人网页 v{{ version }}
     </footer>
-
-    <!-- AI 对话：浮动对话框 -->
-    <ChatWidget />
   </div>
 </template>
