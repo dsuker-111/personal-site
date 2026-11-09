@@ -38,5 +38,6 @@ export const router = createRouter({
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? to.meta.title + ' · 个人主页' : '个人主页'
+  const name = to.meta.title
+  document.title = !name || name === '个人主页' ? '个人主页' : name + ' · 个人主页'
 })
