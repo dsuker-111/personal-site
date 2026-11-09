@@ -6,9 +6,54 @@
     <meta name="theme-color" content="#f5f7fb" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>个人主页</title>
+    <style>
+      .boot-tip {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px;
+        text-align: center;
+        font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+        color: #0f172a;
+        background: #f5f7fb;
+      }
+      .boot-tip p { font-size: 14px; color: #64748b; line-height: 1.7; }
+      .boot-tip strong { font-size: 16px; color: #0f172a; }
+      .boot-tip button {
+        margin-top: 8px;
+        padding: 8px 20px;
+        border: none;
+        border-radius: 999px;
+        background: #4f46e5;
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="boot-tip">
+        <strong>页面加载中…</strong>
+        <p>如果一直停留在这里，说明页面脚本没有成功运行。</p>
+        <p>请按 Ctrl + F5 强制刷新；或改用最新版 Chrome / Edge 打开。</p>
+        <button type="button" onclick="location.reload()">重新加载</button>
+      </div>
+    </div>
+    <script>
+      // 脚本加载/执行失败时，把原因直接显示出来，避免白屏无法排查
+      window.addEventListener('error', function (e) {
+        var tip = document.querySelector('.boot-tip strong');
+        var detail = document.querySelector('.boot-tip p');
+        var msg = e && e.message ? e.message : '资源加载失败'
+        var src = e && e.target && e.target.src ? e.target.src : ''
+        if (tip) tip.textContent = '页面启动失败'
+        if (detail) detail.textContent = msg + (src ? '（' + src + '）' : '') + ' —— 请强制刷新（Ctrl + F5）后重试。'
+      }, true)
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
